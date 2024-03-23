@@ -6,7 +6,7 @@ import traceback
 # Set up TensorFlow environment variables before importing TensorFlow
 os.environ['TF_CONFIG'] = json.dumps({
     'cluster': {
-        'worker': ['208.68.39.112:12345', '143.244.164.42:12345']  # Update with actual worker addresses and ports
+        'worker': ['208.68.39.112:12345', '143.244.164.42:12345']
     },
     'task': {'type': 'worker', 'index': 0}
 })
