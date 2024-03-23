@@ -69,6 +69,7 @@ def train(rank, world_size, device_ips, port):
 
     # 等待所有节点上线
     dist.barrier()
+    print("online!")
 
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
