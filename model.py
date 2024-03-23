@@ -5,18 +5,17 @@ import traceback
 import requests
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.framework import ops
 
 def get_public_ip():
     try:
-        # 使用 ipify 的 API 查询公共 IP 地址
+        # Using ipify API to query public IP address
         response = requests.get('https://api64.ipify.org/')
         if response.status_code == 200:
             return response.text
         else:
-            print("error code：", response.status_code)
+            print("error code:", response.status_code)
     except Exception as e:
-        print("error：", e)
+        print("error:", e)
     return None
 
 public_ip = get_public_ip()
@@ -57,9 +56,6 @@ def text_to_tensor(text, char_to_idx, max_length):
 
 max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
 
-def cast_to_int32(tensor):
-    return tf.cast(tensor, tf.int32)
-    
 # Model Definition
 class QALSTM(tf.keras.Model):
     def __init__(self, input_size, hidden_size, output_size, num_heads):
@@ -94,12 +90,12 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
     @tf.function
     def train_step(question_tensor, answer_tensor):
-        question_tensor = tf.cast(question_tensor, tf.float32)  # Convert tensor to float32 type
-        answer_tensor = tf.cast(answer_tensor, tf.float32)  # Convert tensor to float32 type
+        question_tensor = tf.cast(question_tensor, tf.int32)
+        answer_tensor = tf.cast(answer_tensor, tf.int32)
     
         with tf.GradientTape() as tape:
             output = model(question_tensor)
-            output = tf.expand_dims(output, axis=0)  # Add back batch dimension
+            output = tf.expand_dims(output, axis=0)
             expected_shape = tf.shape(answer_tensor)
             output_shape = tf.shape(output)
             pad_size = tf.maximum(expected_shape[1] - output_shape[1], 0)
@@ -118,13 +114,12 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
             answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
             try:
-                loss = strategy.run(train_step, args=(tf.constant([question_tensor], dtype=tf.int32), tf.constant([answer_tensor], dtype=tf.int32)))
+                loss = strategy.run(train_step, args=(tf.constant([question_tensor]), tf.constant([answer_tensor])))
                 total_loss += loss
                 print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
             except Exception as e:
                 logger.error("Error occurred during training step: %s", e)
                 logger.error(traceback.format_exc())
-                # You can choose to continue training or exit the program based on the severity of the error
 
         if not os.path.exists(save_dir):
             try:
