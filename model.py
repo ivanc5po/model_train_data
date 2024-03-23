@@ -64,7 +64,7 @@ def train(cluster_resolver, rank):
         print("开始训练, 节点:", rank)
         for epoch in range(num_epochs):
             total_loss = 0
-            for i in range(rank, dataset_size, cluster_resolver.num_workers()):
+            for i in range(rank, dataset_size, cluster_resolver.num_tasks('worker')):
                 question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
                 answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
 
@@ -83,7 +83,6 @@ def train(cluster_resolver, rank):
                 total_loss += loss.numpy()
 
             print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
-
 
 if __name__ == "__main__":
     # 获取本地 IP 地址
