@@ -91,7 +91,7 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
     dataset_size = len(questions)
 
-   @tf.function
+    @tf.function
     def train_step(question_tensor, answer_tensor):
         question_tensor = cast_to_int32(question_tensor)
         answer_tensor = cast_to_int32(answer_tensor)
