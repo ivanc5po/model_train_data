@@ -107,18 +107,6 @@ def train(strategy, questions, answers, char_to_idx, max_length):
         except Exception as e:
             logger.error("Failed to save model: %s", e)
             logger.error(traceback.format_exc())
-            
-def wait_for_nodes(cluster_resolver, num_nodes):
-    while True:
-        cluster_spec = cluster_resolver.cluster_spec().as_dict()
-        print("Cluster Spec:", cluster_spec)
-        
-        if 'worker' in cluster_spec and len(cluster_spec['worker']) == num_nodes:
-            print("All nodes are online. Starting distributed computation.")
-            break
-        else:
-            print("Waiting for all nodes to come online...")
-            time.sleep(3)  # Wait for 3 seconds before checking again
 
 if __name__ == "__main__":
     # Define IP addresses and port numbers list
