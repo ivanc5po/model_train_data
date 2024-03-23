@@ -82,10 +82,12 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             os.makedirs(save_dir)
             model.save(os.path.join(save_dir, 'qalstm_model'))
 
-
 def wait_for_nodes(cluster_resolver, num_nodes):
     while True:
-        if len(cluster_resolver.cluster_spec().as_dict()['worker']) == num_nodes:
+        cluster_spec = cluster_resolver.cluster_spec().as_dict()
+        print("Cluster Spec:", cluster_spec)
+        
+        if 'worker' in cluster_spec and len(cluster_spec['worker']) == num_nodes:
             print("All nodes are online. Starting distributed computation.")
             break
         else:
