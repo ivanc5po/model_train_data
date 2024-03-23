@@ -6,6 +6,8 @@ import time
 import logging
 import traceback
 
+tf.device('CPU')
+
 # Define a logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
