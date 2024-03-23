@@ -63,7 +63,7 @@ class QALSTM(tf.keras.Model):
         self.hidden_size = hidden_size
         self.embedding = tf.keras.layers.Embedding(input_size, hidden_size)
         self.multihead_attn = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=hidden_size)
-        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True)
+        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True, dtype=tf.float32)  # Specify dtype
         self.fc = tf.keras.layers.Dense(output_size)
 
     def call(self, x):
@@ -90,8 +90,8 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
     @tf.function
     def train_step(question_tensor, answer_tensor):
-        question_tensor = tf.cast(question_tensor, tf.int32)
-        answer_tensor = tf.cast(answer_tensor, tf.int32)
+        question_tensor = tf.cast(question_tensor, tf.float32)
+        answer_tensor = tf.cast(answer_tensor, tf.float32)
     
         with tf.GradientTape() as tape:
             output = model(question_tensor)
