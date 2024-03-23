@@ -5,6 +5,7 @@ import traceback
 import requests
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.framework import ops
 
 def get_public_ip():
     try:
@@ -93,12 +94,12 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
     @tf.function
     def train_step(question_tensor, answer_tensor):
-        question_tensor = tf.cast(question_tensor, tf.float32)  # 将张量转换为 float32 类型
-        answer_tensor = tf.cast(answer_tensor, tf.float32)  # 将张量转换为 float32 类型
+        question_tensor = tf.cast(question_tensor, tf.float32)  # Convert tensor to float32 type
+        answer_tensor = tf.cast(answer_tensor, tf.float32)  # Convert tensor to float32 type
     
         with tf.GradientTape() as tape:
             output = model(question_tensor)
-            output = tf.expand_dims(output, axis=0)  # 添加回批量维度
+            output = tf.expand_dims(output, axis=0)  # Add back batch dimension
             expected_shape = tf.shape(answer_tensor)
             output_shape = tf.shape(output)
             pad_size = tf.maximum(expected_shape[1] - output_shape[1], 0)
