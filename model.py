@@ -8,13 +8,6 @@ import traceback
 
 tf.device('CPU')
 
-# Configure collective operations at program startup
-os.environ['TF_CONFIG'] = json.dumps({
-    'cluster': {'worker': ["localhost:12345"]},
-    'task': {'type': 'worker', 'index': 0},  
-    'environment': 'cloud' 
-})
-
 # Define a logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
@@ -40,26 +33,6 @@ def text_to_tensor(text, char_to_idx, max_length):
     return np.array(tensor)
 
 max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
-
-# Initialize TensorFlow environment
-try:
-    # Define IP addresses and port numbers list
-    ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
-
-    # Set the environment variable for distributed training
-    os.environ['TF_CONFIG'] = json.dumps({
-        'cluster': {'worker': ip_list},
-        'task': {'type': 'worker', 'index': 0},  # Set the index of this worker
-        'environment': 'cloud'  # Assuming this is running in a cloud environment
-    })
-
-    # Initialize TensorFlow environment
-    strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
-        communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
-except Exception as e:
-    logger.error("Failed to create MultiWorkerMirroredStrategy: %s", e)
-    logger.error(traceback.format_exc())
-    exit(1)
 
 # Model Definition
 class QALSTM(tf.keras.Model):
@@ -121,6 +94,8 @@ def train(strategy, questions, answers, char_to_idx, max_length):
                 print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
             except Exception as e:
                 logger.error("Error occurred during training step: %s", e)
+                logger.error(traceback.format_exc())
+                # You can choose to continue training or exit the program based on the severity of the error
 
         if not os.path.exists(save_dir):
             try:
@@ -137,6 +112,16 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
 if __name__ == "__main__":
     try:
+        port = 12345
+        cluster_spec = {
+            'worker': f'143.244.164.42:{port} 208.68.39.112:{port}'.split()
+        }
+        os.environ['TF_CONFIG'] = json.dumps({
+            'cluster': cluster_spec,
+            'task': {'type': 'worker', 'index': 0}
+        })
+        
+        strategy = tf.distribute.MultiWorkerMirroredStrategy()
         train(strategy, questions, answers, char_to_idx, max_length)
     except Exception as e:
         logger.error("Error occurred during training: %s", e)
