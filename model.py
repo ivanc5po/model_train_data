@@ -26,8 +26,8 @@ def get_public_ip():
 public_ip = get_public_ip()
 
 ip_list = ['208.68.39.112:12345', '143.244.164.42:12345']
-os.environ['MASTER_ADDR'] = ip_list[0]
-os.environ['MASTER_PORT'] = '12345'
+os.environ['MASTER_ADDR'] = ip_list[0].split(":")[0]
+os.environ['MASTER_PORT'] = ip_list[0].split(":")[1]
 os.environ['WORLD_SIZE'] = str(len(ip_list))
 os.environ['RANK'] = str(ip_list.index(public_ip+":12345"))
 
