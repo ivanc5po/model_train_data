@@ -7,7 +7,7 @@ import logging
 import traceback
 
 # Configure collective operations at program startup
-tf.config.experimental.set_memory_growth(tf.config.experimental.list_physical_devices('GPU')[0], True)
+tf.config.experimental.set_memory_growth(tf.config.experimental.list_physical_devices('CPU')[0], True)
 
 # Define a logger
 logger = logging.getLogger(__name__)
