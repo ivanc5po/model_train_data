@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # Wait for all nodes to be online
     all_nodes_online = False
     while not all_nodes_online:
-        time.sleep(10)  # Check every 10 seconds
+        time.sleep(1)  # Check every 10 seconds
         all_nodes_online = all(cluster_resolver.get_task_info().type == 'worker' for worker in cluster_resolver.get_task_info())
 
     print("All nodes are online. Starting parallel computation.")
