@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+save_dir = 'model'
 
 # Data Preparation
 questions = open("questions.txt", "r", encoding="utf-8").readlines()
@@ -74,7 +75,10 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             total_loss += loss
 
             print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i, dataset_size, total_loss/(i+1)))
-
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+            model.save(os.path.join(save_dir, 'qalstm_model'))
+            
 if __name__ == "__main__":
     ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
     cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver(ip_list)
