@@ -83,7 +83,13 @@ def train(rank, world_size):
                     # Compute loss
                     loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
 
+                # Calculate gradients within replica context
                 gradients = tape.gradient(loss, model.trainable_variables)
+                
+                # Aggregate gradients across replicas
+                gradients = [strategy.reduce(tf.distribute.ReduceOp.SUM, grad, axis=None) for grad in gradients]
+                
+                # Apply aggregated gradients
                 optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
                 total_loss += loss.numpy()
@@ -91,6 +97,8 @@ def train(rank, world_size):
             print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
 if __name__ == "__main__":
+    # 设置世界大小，即使用的设备数量
     world_size = 5
     for i in range(world_size):
         train(i, world_size)
+
