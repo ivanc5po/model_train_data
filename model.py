@@ -64,7 +64,7 @@ def create_lock_file(lock_file_path):
 def check_lock_file(lock_file_path):
     return os.path.exists(lock_file_path)
 
-def train(rank, world_size, device_ips, port):
+def train(rank, world_size, device_ips, port, lock_file_path):
     os.environ['MASTER_ADDR'] = public_ip
     os.environ['MASTER_PORT'] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
