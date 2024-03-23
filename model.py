@@ -67,6 +67,8 @@ def train(strategy, questions, answers, char_to_idx, max_length):
                 question_tensor, answer_tensor = inputs
                 with tf.GradientTape() as tape:
                     output = model(question_tensor)
+                    # Reshape the model output to match the shape of the target tensor
+                    output = tf.reshape(output, (-1, output.shape[-1]))
                     loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
                 grads = tape.gradient(loss, model.trainable_variables)
                 optimizer.apply_gradients(zip(grads, model.trainable_variables))
