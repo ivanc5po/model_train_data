@@ -93,10 +93,18 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
     @tf.function
     def train_step(question_tensor, answer_tensor):
-        question_tensor = cast_to_int32(question_tensor)
-        answer_tensor = cast_to_int32(answer_tensor)
+        question_tensor = tf.cast(question_tensor, tf.float32)  # 将张量转换为 float32 类型
+        answer_tensor = tf.cast(answer_tensor, tf.float32)  # 将张量转换为 float32 类型
+    
         with tf.GradientTape() as tape:
             output = model(question_tensor)
+            output = tf.expand_dims(output, axis=0)  # 添加回批量维度
+            expected_shape = tf.shape(answer_tensor)
+            output_shape = tf.shape(output)
+            pad_size = tf.maximum(expected_shape[1] - output_shape[1], 0)
+            paddings = [[0, 0], [0, pad_size], [0, 0]]
+            output = tf.pad(output, paddings, constant_values=0.0)
+            output = output[:, :expected_shape[1], :]
             loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
