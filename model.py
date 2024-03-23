@@ -7,6 +7,7 @@ import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import requests
+from queue import Queue
 
 def get_public_ip():
     try:
