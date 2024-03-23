@@ -91,4 +91,6 @@ def train(rank, world_size):
         print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
 if __name__ == "__main__":
-   
+    world_size = 5
+    for i in range(world_size):
+        train(i, world_size)
