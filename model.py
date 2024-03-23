@@ -129,4 +129,4 @@ if __name__ == "__main__":
 
     server_process = mp.Process(target=check_online, args=(world_size, device_queue))
     server_process.start()
-    mp.spawn(train, args=(world_size, device_queue, port), nprocs=world_size, join=True)
+    mp.spawn(train, args=(world_size, device_queue), nprocs=world_size, join=True)
