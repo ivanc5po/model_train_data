@@ -37,13 +37,7 @@ class QALSTM(tf.keras.Model):
         output = self.fc(lstm_output)
         return output
 
-def train(rank, world_size):
-    # 获取本机 IP 地址
-    local_ip = socket.gethostbyname(socket.gethostname())
-
-    # 设置分布式参数
-    cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver()
-
+def train(cluster_resolver, rank):
     # 连接到集群
     tf.config.experimental_connect_to_cluster(cluster_resolver)
 
@@ -67,39 +61,42 @@ def train(rank, world_size):
 
         # 训练模型
         num_epochs = 100
-        print("開始訓練, 節點:", rank)
+        print("开始训练, 节点:", rank)
         for epoch in range(num_epochs):
             total_loss = 0
-            for i in range(rank, dataset_size, world_size):
+            for i in range(rank, dataset_size, cluster_resolver.num_workers()):
                 question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
                 answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
 
-                def train_step(question_tensor, answer_tensor):
-                    with tf.GradientTape() as tape:
-                        output = model(tf.constant([question_tensor], dtype=tf.int32))
-                        
-                        # Reshape output to match target shape
-                        output = tf.squeeze(output, axis=0)
-                        
-                        # Compute loss
-                        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
-
-                    # Calculate gradients within replica context
-                    gradients = tape.gradient(loss, model.trainable_variables)
+                with tf.GradientTape() as tape:
+                    output = model(tf.constant([question_tensor], dtype=tf.int32))
                     
-                    # Apply gradients
-                    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+                    # Reshape output to match target shape
+                    output = tf.squeeze(output, axis=0)
                     
-                    return loss
+                    # Compute loss
+                    loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
 
-                # Execute the training step within the replica context
-                loss = strategy.run(train_step, args=(question_tensor, answer_tensor))
+                gradients = tape.gradient(loss, model.trainable_variables)
+                optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
                 total_loss += loss.numpy()
 
             print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
 if __name__ == "__main__":
-    # 设置世界大小，即使用的设备数量
-    world_size = 5
-    for i in range(world_size):
-        train(i, world_size)
+    # 获取本地 IP 地址
+    local_ip = socket.gethostbyname(socket.gethostname())
+    # 假设有5个节点
+    num_workers = 5
+    ip_list = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11"
+    ip+list = [x+":12345" for x in ip_list]
+    # 设置分布式参数
+    cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver(ip_list)
+
+    # 指定本地IP地址
+    cluster_resolver.task_type = 'worker'
+    cluster_resolver.task_id = -1  # 自动分配rank
+
+    for i in range(num_workers):
+        train(cluster_resolver, i)
