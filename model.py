@@ -98,7 +98,7 @@ def train(rank, world_size, device_ips, port):
         print(f'Device {rank} - Epoch [{epoch+1}/{num_epochs}], Average Loss: {total_loss/(dataset_size/world_size):.5f}')
 
 if __name__ == "__main__":
-    device_ips = ["193.149.129.144", "172.86.75.122"]  # 设置设备的IP地址
+    device_ips = "208.68.39.112 172.86.75.122".split()
     port = "12345"  # 设置端口号
     world_size = len(device_ips)  # 设置世界大小，即使用的设备数量
     mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
