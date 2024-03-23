@@ -83,13 +83,13 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             model.save(os.path.join(save_dir, 'qalstm_model'))
 
 if __name__ == "__main__":
-    ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
+    ip_list = ["208.68.39.112:12345", "143.244.164.42:12345"] #, "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"
     cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver(ip_list)
     cluster_resolver.task_type = 'worker'
 
     # Wait until all nodes are online
     print("Waiting for all nodes to come online...")
-    while len(cluster_resolver.get_task_addresses()) < len(ip_list):
+    while cluster_resolver.num_tasks('worker') < len(ip_list):
         time.sleep(1)  # Adjust sleep time as needed
 
     strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
