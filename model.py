@@ -53,10 +53,10 @@ def train(rank, world_size, device_ips, port):
 
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
-    hidden_size = 4096
-    num_layers = 48
+    hidden_size = 128
+    num_layers = 8
     output_size = len(chars)  # 输出大小与输入大小相同
-    num_heads = 8  # 多头注意力的头数
+    num_heads = 2  # 多头注意力的头数
 
     # 创建模型和优化器
     device = torch.device("cpu")
