@@ -52,6 +52,7 @@ def train(strategy, questions, answers, char_to_idx, max_length):
     def train_step(question_tensor, answer_tensor):
         with tf.GradientTape() as tape:
             output = model(question_tensor)
+            output = tf.expand_dims(output, axis=0)  # Adding back batch dimension
             expected_shape = tf.shape(answer_tensor)
             output_shape = tf.shape(output)
             pad_size = tf.maximum(expected_shape[1] - output_shape[1], 0)
