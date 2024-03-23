@@ -73,9 +73,8 @@ def train(strategy, questions, answers, tokenizer, max_length):
     output_size = vocab_size
     num_heads = 8
 
-    with strategy.scope():
-        model = QALSTM(vocab_size, hidden_size, output_size, num_heads)
-        optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+    model = QALSTM(vocab_size, hidden_size, output_size, num_heads)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
     dataset_size = len(questions)
 
