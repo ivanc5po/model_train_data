@@ -2,14 +2,30 @@ import os
 import json
 import logging
 import traceback
+import os
+import json
+import requests
 
-# Set up TensorFlow environment variables before importing TensorFlow
+def get_public_ip():
+    try:
+        # 使用 ipify 的 API 查询公共 IP 地址
+        response = requests.get('https://api64.ipify.org/')
+        if response.status_code == 200:
+            return response.text
+        else:
+            print("error code：", response.status_code)
+    except Exception as e:
+        print("error：", e)
+    return None
+
+public_ip = get_public_ip()
+
+ip_list = ['208.68.39.112:12345', '143.244.164.42:12345']
 os.environ['TF_CONFIG'] = json.dumps({
     'cluster': {
-        'worker': ['208.68.39.112:12345', '143.244.164.42:12345']
+        'worker': 
     },
-    'task': {'type': 'worker', 'index': 0}
-    'task': {'type': 'worker', 'index': 1}
+    'task': {'type': 'worker', 'index': ip_list.index(public_ip)}
 })
 
 import tensorflow as tf
