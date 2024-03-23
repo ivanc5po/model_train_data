@@ -7,7 +7,7 @@ import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import requests
-from queue import Queue
+from multiprocessing import Manager
 
 def get_public_ip():
     try:
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()
     port = "12345"
     world_size = len(device_ips)
-    device_queue = Queue()
+    device_queue = Manager().Queue()
 
     server_process = mp.Process(target=check_online, args=(world_size, device_queue))
     server_process.start()
