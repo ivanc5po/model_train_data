@@ -96,7 +96,9 @@ if __name__ == "__main__":
 
     # 指定本地IP地址
     cluster_resolver.task_type = 'worker'
-    cluster_resolver.task_id = -1  # 自动分配rank
 
+    # 指定任务ID
     for i in range(num_workers):
+        cluster_resolver.task_id = i
         train(cluster_resolver, i)
+
