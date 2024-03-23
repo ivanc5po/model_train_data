@@ -76,6 +76,11 @@ def train(rank, world_size):
 
             with tf.GradientTape() as tape:
                 output = model(tf.constant([question_tensor], dtype=tf.int32))
+                
+                # Reshape output to match target shape
+                output = tf.squeeze(output, axis=0)
+                
+                # Compute loss
                 loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
 
             gradients = tape.gradient(loss, model.trainable_variables)
@@ -86,7 +91,4 @@ def train(rank, world_size):
         print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
 if __name__ == "__main__":
-    # 设置世界大小，即使用的设备数量
-    world_size = 5
-    for i in range(world_size):
-        train(i, world_size)
+   
