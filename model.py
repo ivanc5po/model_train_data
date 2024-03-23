@@ -62,33 +62,33 @@ def train(rank, world_size):
         model = QALSTM(input_size, hidden_size, output_size, num_heads)
         optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
-    # 数据集大小
-    dataset_size = len(questions)
+        # 数据集大小
+        dataset_size = len(questions)
 
-    # 训练模型
-    num_epochs = 100
-    print("開始訓練, 節點:", rank)
-    for epoch in range(num_epochs):
-        total_loss = 0
-        for i in range(rank, dataset_size, world_size):
-            question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
-            answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
+        # 训练模型
+        num_epochs = 100
+        print("開始訓練, 節點:", rank)
+        for epoch in range(num_epochs):
+            total_loss = 0
+            for i in range(rank, dataset_size, world_size):
+                question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
+                answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
 
-            with tf.GradientTape() as tape:
-                output = model(tf.constant([question_tensor], dtype=tf.int32))
-                
-                # Reshape output to match target shape
-                output = tf.squeeze(output, axis=0)
-                
-                # Compute loss
-                loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
+                with tf.GradientTape() as tape:
+                    output = model(tf.constant([question_tensor], dtype=tf.int32))
+                    
+                    # Reshape output to match target shape
+                    output = tf.squeeze(output, axis=0)
+                    
+                    # Compute loss
+                    loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
 
-            gradients = tape.gradient(loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+                gradients = tape.gradient(loss, model.trainable_variables)
+                optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-            total_loss += loss.numpy()
+                total_loss += loss.numpy()
 
-        print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
+            print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
 if __name__ == "__main__":
     world_size = 5
