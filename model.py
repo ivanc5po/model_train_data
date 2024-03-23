@@ -88,9 +88,9 @@ if __name__ == "__main__":
     # 获取本地 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
     # 假设有5个节点
-    num_workers = 5
     ip_list = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11"
-    ip+list = [x+":12345" for x in ip_list]
+    ip_list = [x+":12345" for x in ip_list]
+    num_workers = len(ip_list)
     # 设置分布式参数
     cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver(ip_list)
 
