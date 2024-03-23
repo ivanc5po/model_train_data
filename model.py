@@ -1,4 +1,5 @@
 import os
+import time
 import socket
 import torch
 import torch.nn as nn
@@ -56,14 +57,24 @@ class QALSTM(nn.Module):
         x = self.fc(x)
         return x
 
+def create_lock_file(lock_file_path):
+    with open(lock_file_path, 'w') as lock_file:
+        lock_file.write("LOCK")
+
+def check_lock_file(lock_file_path):
+    return os.path.exists(lock_file_path)
+
 def train(rank, world_size, device_ips, port):
     os.environ['MASTER_ADDR'] = public_ip
     os.environ['MASTER_PORT'] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
     print("IP:", public_ip, " num:", device_ips.index(public_ip))
     
-    # 等待所有节点上线
-    dist.barrier()
+    while True:
+        time.sleep(0.5)
+        if all(check_lock_file(lock_file_path.replace(f".{i}.lock", "")) for i in range(world_size)):
+            break
+            
     print("online!")
 
     # 模型参数
