@@ -46,14 +46,12 @@ def train(cluster_resolver, rank):
     # 使用分布式策略
     strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
-    # 使用分布式策略
-    with strategy.scope():
-        # 模型参数
-        input_size = len(chars)  # 输入大小为字符集大小
-        hidden_size = 128  # Changed hidden_size here
-        output_size = len(chars)  # 输出大小与输入大小相同
-        num_heads = 8  # 多头注意力的头数
+    input_size = len(chars)  # 输入大小为字符集大小
+    hidden_size = 128  # Changed hidden_size here
+    output_size = len(chars)  # 输出大小与输入大小相同
+    num_heads = 8  # 多头注意力的头数
 
+    with strategy.scope():
         # 创建模型和优化器
         model = QALSTM(input_size, hidden_size, output_size, num_heads)
         optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
