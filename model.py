@@ -38,16 +38,16 @@ class QALSTM(tf.keras.Model):
         output = self.fc(lstm_output)
         return output
 
-def train(rank, world_size, device_ips, port):
+def train(rank, world_size, device_ips, ports):
     # 获取本机 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
 
     # 设置分布式参数
-    cluster_spec = tf.train.ClusterSpec({"worker": device_ips})
-    server = tf.distribute.Server(cluster_spec, job_name="worker", task_index=rank)
+    cluster_spec = {"worker": [(ip + ":" + port) for ip, port in zip(device_ips, ports)]}
 
     # 连接到集群
-    tf.config.experimental_connect_to_cluster(server.target)
+    cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver(cluster_spec)
+    tf.config.experimental_connect_to_cluster(cluster_resolver)
     tf.distribute.experimental_set_strategy(tf.distribute.experimental.MultiWorkerMirroredStrategy())
 
     print("正在載入模型, 節點:", rank)
@@ -89,7 +89,7 @@ def train(rank, world_size, device_ips, port):
 
 if __name__ == "__main__":
     device_ips = ["208.68.39.112", "143.244.164.42", "208.68.36.142", "178.128.148.143", "157.230.88.11"]
-    port = "12345"  # 设置端口号
+    ports = ["12345", "12345", "12345", "12345", "12345"]  # 设置端口号
     world_size = len(device_ips)  # 设置世界大小，即使用的设备数量
     for i in range(world_size):
-        train(i, world_size, device_ips, port)
+        train(i, world_size, device_ips, ports)
