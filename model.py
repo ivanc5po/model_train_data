@@ -9,6 +9,7 @@ os.environ['TF_CONFIG'] = json.dumps({
         'worker': ['208.68.39.112:12345', '143.244.164.42:12345']
     },
     'task': {'type': 'worker', 'index': 0}
+    'task': {'type': 'worker', 'index': 1}
 })
 
 import tensorflow as tf
