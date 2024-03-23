@@ -55,7 +55,7 @@ def train(rank, world_size, device_ips, port):
         print("Waiting for all nodes to come online...")
     dist.barrier()
 
-    print("Start training...")
+    print("正在載入模型, 節點:{rank}......")
     
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
@@ -80,7 +80,7 @@ def train(rank, world_size, device_ips, port):
 
     # 训练模型
     num_epochs = 100
-    print(f"start training on device {rank}......")
+    print(f"開始訓練, 節點:{rank}......")
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
