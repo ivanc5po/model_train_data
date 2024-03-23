@@ -6,10 +6,10 @@ import requests
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset
 from collections import Counter
+import multiprocessing as mp
 
 def get_public_ip():
     try:
@@ -25,8 +25,6 @@ def get_public_ip():
 public_ip = get_public_ip()
 
 ip_list = ['208.68.39.112:12345', '143.244.164.42:12345']
-os.environ['MASTER_ADDR'] = ip_list[0].split(':')[0]
-os.environ['MASTER_PORT'] = ip_list[0].split(':')[1]
 os.environ['WORLD_SIZE'] = str(len(ip_list))
 os.environ['RANK'] = str(ip_list.index(public_ip+":12345"))
 
@@ -84,7 +82,7 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
     num_heads = 8
 
     model = QALSTM(vocab_size, hidden_size, output_size, num_heads).to(device)
-    model = DDP(model, device_ids=[rank % torch.cuda.device_count()])
+    model = DDP(model)
 
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
@@ -125,9 +123,7 @@ if __name__ == "__main__":
     try:
         world_size = int(os.environ['WORLD_SIZE'])
         rank = int(os.environ['RANK'])
-        print(rank)
-        dist.init_process_group("gloo", rank=rank, world_size=world_size)
-        train(rank, world_size, tokenizer, max_length)
+        mp.spawn(train, args=(world_size, tokenizer, max_length), nprocs=world_size, join=True)
     except Exception as e:
         logger.error("Error during training: %s", e)
         logger.error(traceback.format_exc())
