@@ -84,6 +84,7 @@ def train(cluster_resolver, rank):
 
             print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
+
 if __name__ == "__main__":
     # 获取本地 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
@@ -99,5 +100,5 @@ if __name__ == "__main__":
 
     # 指定任务ID
     for i in range(num_workers):
+        cluster_resolver.task_id = i
         train(cluster_resolver, i)
-
