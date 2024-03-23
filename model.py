@@ -9,6 +9,7 @@ import torch.optim as optim
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset
+from collections import Counter
 
 def get_public_ip():
     try:
@@ -45,8 +46,16 @@ except Exception as e:
     exit(1)
 
 # Tokenization and Padding
-tokenizer = torch.nn.utils.rnn.pad_sequence([torch.tensor([tokenizer.word_index[word] for word in sentence.split()]) for sentence in questions + answers], batch_first=True)
-max_length = tokenizer.size(1)
+word_counts = Counter()
+for sentence in questions + answers:
+    word_counts.update(sentence.split())
+tokenizer = {word: index + 1 for index, (word, _) in enumerate(word_counts.most_common())}
+
+def tokenize(sentence):
+    return [tokenizer[word] for word in sentence.split()]
+
+max_length = max(len(tokenize(sentence)) for sentence in questions + answers)
+tokenizer = torch.nn.utils.rnn.pad_sequence([torch.tensor(tokenize(sentence)) for sentence in questions + answers], batch_first=True)
 
 class QALSTM(nn.Module):
     def __init__(self, vocab_size, hidden_size, output_size, num_heads):
@@ -65,15 +74,15 @@ class QALSTM(nn.Module):
         output = self.fc(lstm_output)
         return output.permute(1, 0, 2)  # back to (batch, seq_len, features)
 
-def train(rank, world_size, tokenizer, max_length):
+def train(rank, world_size, questions, answers, tokenizer, max_length):
     torch.manual_seed(0)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.cuda.set_device(rank % torch.cuda.device_count())
 
     vocab_size = len(tokenizer) + 1
-    hidden_size = 128
+    hidden_size = 64
     output_size = vocab_size
-    num_heads = 8
+    num_heads = 4
 
     model = QALSTM(vocab_size, hidden_size, output_size, num_heads).to(device)
     model = DDP(model, device_ids=[rank % torch.cuda.device_count()])
