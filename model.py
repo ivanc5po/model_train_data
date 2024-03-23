@@ -6,6 +6,14 @@ import time
 import logging
 import traceback
 
+port = 12345
+os.environ['TF_CONFIG'] =  json.dumps({
+    'cluster': {
+        'worker': f'208.68.39.112:{port} 143.244.164.42:{port}'.split()
+    },
+    'task': {'type': 'worker', 'index': 0}
+})
+
 tf.device('CPU')
 
 # Define a logger
@@ -112,17 +120,10 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
 if __name__ == "__main__":
     try:
-        port = 12345
-        os.environ['TF_CONFIG'] =  json.dumps({
-            'cluster': {
-                'worker': f'208.68.39.112:{port} 143.244.164.42:{port}'.split()
-            },
-            'task': {'type': 'worker', 'index': 0}
-        })
-        
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
         with strategy.scope():
             train(strategy, questions, answers, char_to_idx, max_length)
     except Exception as e:
         logger.error("Error occurred during training: %s", e)
         logger.error(traceback.format_exc())
+
