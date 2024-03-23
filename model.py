@@ -124,7 +124,7 @@ if __name__ == "__main__":
         world_size = int(os.environ['WORLD_SIZE'])
         processes = []
         for rank in range(world_size):
-            p = Process(target=train, args=(rank, world_size, tokenizer, max_length))
+            p = Process(target=train, args=(rank, world_size, questions, answers, tokenizer, max_length))
             p.start()
             processes.append(p)
         for p in processes:
