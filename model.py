@@ -82,15 +82,23 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             os.makedirs(save_dir)
             model.save(os.path.join(save_dir, 'qalstm_model'))
 
+
+def wait_for_nodes(cluster_resolver, num_nodes):
+    while True:
+        if len(cluster_resolver.cluster_spec().as_dict()['worker']) == num_nodes:
+            print("All nodes are online. Starting distributed computation.")
+            break
+        else:
+            print("Waiting for all nodes to come online...")
+            time.sleep(3)  # Wait for 30 seconds before checking again
+
 if __name__ == "__main__":
-    ip_list = ["208.68.39.112:12345", "143.244.164.42:12345"]#, "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
+    ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
+    num_nodes = len(ip_list)
     cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver(ip_list)
     cluster_resolver.task_type = 'worker'
 
-    # Wait until all nodes are online
-    print("Waiting for all nodes to come online...")
-    while cluster_resolver.num_workers() < len(ip_list):
-        time.sleep(1)  # Adjust sleep time as needed
+    wait_for_nodes(cluster_resolver, num_nodes)
 
     strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
         cluster_resolver=cluster_resolver,
