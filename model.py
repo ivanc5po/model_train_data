@@ -37,6 +37,8 @@ class QALSTM(tf.keras.Model):
         output = self.fc(lstm_output)
         return output
 
+import os
+
 def train(cluster_resolver, rank):
     # 连接到集群
     tf.config.experimental_connect_to_cluster(cluster_resolver)
@@ -60,8 +62,12 @@ def train(cluster_resolver, rank):
         dataset_size = len(questions)
 
         # 计算任务数量
-        num_tasks = cluster_resolver.num_tasks(cluster_resolver.task_type)
-
+        num_tasks = int(os.environ.get('OMPI_COMM_WORLD_SIZE', 1))  # For OpenMPI
+        if num_tasks == 1:  # If not using MPI, try to get from TF_CONFIG
+            tf_config = os.environ.get('TF_CONFIG')
+            if tf_config:
+                num_tasks = len(tf_config['cluster']['worker'])
+        
         # 训练模型
         num_epochs = 100
         print("开始训练, 节点:", rank)
@@ -89,7 +95,6 @@ def train(cluster_resolver, rank):
 
             print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
-
 if __name__ == "__main__":
     # 获取本地 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
@@ -105,5 +110,4 @@ if __name__ == "__main__":
 
     # 指定任务ID
     for i in range(num_workers):
-        cluster_resolver.task_id = i
         train(cluster_resolver, i)
