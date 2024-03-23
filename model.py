@@ -82,7 +82,7 @@ def train(rank, world_size):
 
             total_loss += loss.numpy()
 
-        print(f'Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
+        print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
 if __name__ == "__main__":
     # 设置世界大小，即使用的设备数量
