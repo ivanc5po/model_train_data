@@ -47,7 +47,6 @@ def train(rank, world_size, device_ips, port):
     os.environ['MASTER_ADDR'] = device_ips[0]
     os.environ['MASTER_PORT'] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
-    print(local_ip)
 
     # 等待所有节点上线
     dist.barrier()
