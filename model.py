@@ -56,22 +56,19 @@ def tokenize(sentence):
 max_length = max(len(tokenize(sentence)) for sentence in questions + answers)
 tokenizer = torch.nn.utils.rnn.pad_sequence([torch.tensor(tokenize(sentence)) for sentence in questions + answers], batch_first=True)
 
-class QALSTM(nn.Module):
-    def __init__(self, vocab_size, hidden_size, output_size, num_heads):
-        super(QALSTM, self).__init__()
-        self.hidden_size = hidden_size
+class QATransformer(nn.Module):
+    def __init__(self, vocab_size, hidden_size, num_layers, num_heads, dropout=0.1):
+        super(QATransformer, self).__init__()
         self.embedding = nn.Embedding(vocab_size, hidden_size)
-        self.multihead_attn = nn.MultiheadAttention(hidden_size, num_heads=num_heads)
-        self.lstm = nn.LSTM(hidden_size, hidden_size, batch_first=True)
-        self.fc = nn.Linear(hidden_size, output_size)
+        self.transformer = nn.Transformer(d_model=hidden_size, nhead=num_heads, num_encoder_layers=num_layers, num_decoder_layers=num_layers, dropout=dropout)
+        self.fc = nn.Linear(hidden_size, vocab_size)
 
-    def forward(self, x):
-        x = self.embedding(x)
-        x = x.permute(1, 0, 2)  # batch_first=True
-        attn_output, _ = self.multihead_attn(x, x, x)
-        lstm_output, _ = self.lstm(attn_output)
-        output = self.fc(lstm_output)
-        return output.permute(1, 0, 2)  # back to (batch, seq_len, features)
+    def forward(self, src, tgt):
+        src = self.embedding(src)
+        tgt = self.embedding(tgt)
+        output = self.transformer(src, tgt)
+        output = self.fc(output)
+        return output
 
 def train(rank, world_size, questions, answers, tokenizer, max_length):
     torch.manual_seed(0)
@@ -79,12 +76,12 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
 
     vocab_size = len(tokenizer) + 1
     hidden_size = 128
-    output_size = vocab_size
+    num_layers = 2
     num_heads = 8
 
     dist.init_process_group("gloo")
     
-    model = QALSTM(vocab_size, hidden_size, output_size, num_heads).to(device)
+    model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
     model = DDP(model)
 
     optimizer = optim.Adam(model.parameters(), lr=0.01)
@@ -98,7 +95,7 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
             answer_tensor = answers[i].unsqueeze(0).to(device)
             try:
                 optimizer.zero_grad()
-                output = model(question_tensor)
+                output = model(question_tensor, answer_tensor)
                 loss = nn.functional.cross_entropy(output.squeeze(0), answer_tensor.squeeze(0))
                 loss.backward()
                 optimizer.step()
@@ -117,7 +114,7 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
                     logger.error(traceback.format_exc())
 
             try:
-                torch.save(model.module.state_dict(), os.path.join(save_dir, 'qalstm_model.pth'))
+                torch.save(model.module.state_dict(), os.path.join(save_dir, 'qatransformer_model.pth'))
             except Exception as e:
                 logger.error("Failed to save model: %s", e)
                 logger.error(traceback.format_exc())
