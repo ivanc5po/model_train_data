@@ -55,6 +55,8 @@ def train(rank, world_size, device_ips, port):
         print("Waiting for all nodes to come online...")
     dist.barrier()
 
+    print("Start training...")
+    
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
     hidden_size = 4096
