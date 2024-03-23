@@ -5,7 +5,6 @@ import traceback
 import requests
 import numpy as np
 import tensorflow as tf
-from sklearn.preprocessing import MinMaxScaler
 
 def get_public_ip():
     try:
@@ -41,32 +40,20 @@ except Exception as e:
     logger.error(traceback.format_exc())
     exit(1)
 
-chars = sorted(list(set(''.join(questions + answers))))
-char_to_idx = {ch: i for i, ch in enumerate(chars)}
-idx_to_char = {i: ch for i, ch in enumerate(chars)}
-
-def text_to_tensor(text, char_to_idx, max_length):
-    tensor = [char_to_idx[ch] for ch in text if ch in char_to_idx]
-    tensor += [0] * (max_length - len(tensor))
-    return np.array(tensor)
-
-max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
-
-# Normalization function
-def normalize_data(data):
-    scaler = MinMaxScaler()
-    scaled_data = scaler.fit_transform(data)
-    return scaled_data, scaler
-
-# Normalize questions and answers
-questions_normalized, scaler_questions = normalize_data(questions)
-answers_normalized, scaler_answers = normalize_data(answers)
+# Tokenization and Padding
+tokenizer = tf.keras.preprocessing.text.Tokenizer(filters='')
+tokenizer.fit_on_texts(questions + answers)
+questions_sequences = tokenizer.texts_to_sequences(questions)
+answers_sequences = tokenizer.texts_to_sequences(answers)
+max_length = max(max(len(seq) for seq in questions_sequences), max(len(seq) for seq in answers_sequences))
+questions_padded = tf.keras.preprocessing.sequence.pad_sequences(questions_sequences, maxlen=max_length, padding='post')
+answers_padded = tf.keras.preprocessing.sequence.pad_sequences(answers_sequences, maxlen=max_length, padding='post')
 
 class QALSTM(tf.keras.Model):
-    def __init__(self, input_size, hidden_size, output_size, num_heads):
+    def __init__(self, vocab_size, hidden_size, output_size, num_heads):
         super(QALSTM, self).__init__()
         self.hidden_size = hidden_size
-        self.embedding = tf.keras.layers.Embedding(input_size, hidden_size)
+        self.embedding = tf.keras.layers.Embedding(vocab_size, hidden_size)
         self.multihead_attn = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=hidden_size, value_dim=hidden_size)  
         self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True)  
         self.fc = tf.keras.layers.Dense(output_size)
@@ -80,23 +67,20 @@ class QALSTM(tf.keras.Model):
         output = tf.squeeze(output, axis=0)
         return output
 
-def train(strategy, questions, answers, char_to_idx, max_length):
-    input_size = len(chars)
+def train(strategy, questions, answers, tokenizer, max_length):
+    vocab_size = len(tokenizer.word_index) + 1
     hidden_size = 128
-    output_size = len(chars)
+    output_size = vocab_size
     num_heads = 8
 
     with strategy.scope():
-        model = QALSTM(input_size, hidden_size, output_size, num_heads)
+        model = QALSTM(vocab_size, hidden_size, output_size, num_heads)
         optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
     dataset_size = len(questions)
 
     @tf.function
     def train_step(question_tensor, answer_tensor):
-        question_tensor = tf.cast(question_tensor, tf.float32)
-        answer_tensor = tf.cast(answer_tensor, tf.float32)
-    
         with tf.GradientTape() as tape:
             output = model(question_tensor)
             output = tf.expand_dims(output, axis=0)
@@ -115,8 +99,8 @@ def train(strategy, questions, answers, char_to_idx, max_length):
     for epoch in range(num_epochs):
         total_loss = 0
         for i in range(dataset_size):
-            question_tensor = text_to_tensor(questions_normalized[i], char_to_idx, max_length)
-            answer_tensor = text_to_tensor(answers_normalized[i], char_to_idx, max_length)
+            question_tensor = questions[i]
+            answer_tensor = answers[i]
             try:
                 loss = strategy.run(train_step, args=(tf.constant([question_tensor]), tf.constant([answer_tensor])))
                 total_loss += loss
@@ -142,7 +126,7 @@ if __name__ == "__main__":
     try:
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
         with strategy.scope():
-            train(strategy, questions_normalized, answers_normalized, char_to_idx, max_length)
+            train(strategy, questions_padded, answers_padded, tokenizer, max_length)
     except Exception as e:
         logger.error("Error during training: %s", e)
         logger.error(traceback.format_exc())
