@@ -64,27 +64,14 @@ def create_lock_file(lock_file_path):
 def check_lock_file(lock_file_path):
     return os.path.exists(lock_file_path)
 
-def train(rank, world_size, device_ips, port):
-    os.environ['MASTER_ADDR'] = public_ip
+def train(rank, world_size, device_queue):
+    device_id = device_queue.get()
+    os.environ['RANK'] = str(rank)
+    os.environ['LOCAL_RANK'] = str(rank)
+    os.environ['WORLD_SIZE'] = str(world_size)
     os.environ['MASTER_PORT'] = port
+
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
-    print("IP:", public_ip, " num:", device_ips.index(public_ip))
-    
-    # 发送消息到服务器
-    dist.send(torch.tensor(rank), dst=0)
-
-    if rank == 0:
-        # 等待所有设备都上线
-        devices_online = set()
-        while len(devices_online) < world_size:
-            device_id = dist.recv(src=dist.any_source)
-            devices_online.add(device_id.item())
-
-        print("All devices are online. Starting training...")
-
-    # 等待服务器发送开始信号
-    dist.barrier()
-    print("online!")
 
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
@@ -129,4 +116,8 @@ if __name__ == "__main__":
     device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()
     port = "12345"
     world_size = len(device_ips)
-    mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
+    device_queue = Queue()
+
+    server_process = mp.Process(target=check_online, args=(world_size, device_queue))
+    server_process.start()
+    mp.spawn(train, args=(world_size, device_queue, port), nprocs=world_size, join=True)
