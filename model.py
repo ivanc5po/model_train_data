@@ -6,6 +6,8 @@ import time
 import logging
 import traceback
 
+tf.device('CPU')
+
 # Configure collective operations at program startup
 os.environ['TF_CONFIG'] = json.dumps({
     'cluster': {'worker': ["localhost:12345"]},
