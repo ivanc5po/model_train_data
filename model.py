@@ -6,8 +6,6 @@ import time
 import logging
 import traceback
 
-tf.device('CPU')
-
 # Define a logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
@@ -36,6 +34,17 @@ max_length = max(max(len(question), len(answer)) for question, answer in zip(que
 
 # Initialize TensorFlow environment
 try:
+    # Define IP addresses and port numbers list
+    ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
+
+    # Set the environment variable for distributed training
+    os.environ['TF_CONFIG'] = json.dumps({
+        'cluster': {'worker': ip_list},
+        'task': {'type': 'worker', 'index': 0},  # Set the index of this worker
+        'environment': 'cloud'  # Assuming this is running in a cloud environment
+    })
+
+    # Initialize TensorFlow environment
     strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
 except Exception as e:
@@ -102,9 +111,10 @@ def train(strategy, questions, answers, char_to_idx, max_length):
                 total_loss += loss
                 print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
             except Exception as e:
-                logger.error("Error occurred during training step: %s", e)
-                logger.error(traceback.format_exc())
-                # You can choose to continue training or exit the program based on the severity of the error
+                logger.error("Error occurred during training step:
+            logger.error("Error occurred during training step: %s", e)
+            logger.error(traceback.format_exc())
+            # You can choose to continue training or exit the program based on the severity of the error
 
         if not os.path.exists(save_dir):
             try:
