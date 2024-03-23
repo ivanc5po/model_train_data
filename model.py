@@ -109,4 +109,4 @@ if __name__ == "__main__":
     device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()  # 设置设备的IP地址
     port = "12345"  # 设置端口号
     world_size = len(device_ips)  # 设置世界大小，即使用的设备数量
-    mp.spawn(train, args=(device_ips.index(public_ip), device_ips, port), nprocs=world_size, join=True)
+    mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
