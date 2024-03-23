@@ -1,0 +1,1 @@
+apt install python3-pip && pip install torch hanziconv datasets
