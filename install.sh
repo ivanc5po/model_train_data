@@ -8,5 +8,9 @@ sudo fallocate -l 500G /swapfile
 chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
+sudo apt update
+sudo apt install ufw
+sudo ufw allow 12345/tcp
 
 python3 model.py
+
