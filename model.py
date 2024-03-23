@@ -6,6 +6,7 @@ import requests
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset
 from collections import Counter
@@ -81,6 +82,8 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
     output_size = vocab_size
     num_heads = 8
 
+    dist.init_process_group("gloo")
+    
     model = QALSTM(vocab_size, hidden_size, output_size, num_heads).to(device)
     model = DDP(model)
 
@@ -124,7 +127,7 @@ if __name__ == "__main__":
         world_size = int(os.environ['WORLD_SIZE'])
         processes = []
         for rank in range(world_size):
-            p = Process(target=train, args=(rank, world_size, questions, answers, tokenizer, max_length))
+            p = Process(target=train, args=(rank, world_size, tokenizer, max_length))
             p.start()
             processes.append(p)
         for p in processes:
