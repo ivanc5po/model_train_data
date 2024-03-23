@@ -8,14 +8,13 @@ import tensorflow as tf
 
 def get_public_ip():
     try:
-        # 使用 ipify 的 API 查询公共 IP 地址
         response = requests.get('https://api64.ipify.org/')
         if response.status_code == 200:
             return response.text
         else:
-            print("error code：", response.status_code)
+            print("error code:", response.status_code)
     except Exception as e:
-        print("error：", e)
+        print("error:", e)
     return None
 
 public_ip = get_public_ip()
@@ -28,20 +27,16 @@ os.environ['TF_CONFIG'] = json.dumps({
     'task': {'type': 'worker', 'index': ip_list.index(public_ip+":12345")}
 })
 
-# 设置 TensorFlow 日志级别
 tf.get_logger().setLevel(logging.INFO)
-
-# 定义日志记录器
 logger = logging.getLogger(__name__)
 
 save_dir = 'model'
 
-# 数据准备
 try:
     questions = open("questions.txt", "r", encoding="utf-8").readlines()
     answers = open("answers.txt", "r", encoding="utf-8").readlines()
 except Exception as e:
-    logger.error("读取数据文件失败：%s", e)
+    logger.error("Failed to read data files: %s", e)
     logger.error(traceback.format_exc())
     exit(1)
 
@@ -56,14 +51,13 @@ def text_to_tensor(text, char_to_idx, max_length):
 
 max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
 
-# 模型定义
 class QALSTM(tf.keras.Model):
     def __init__(self, input_size, hidden_size, output_size, num_heads):
         super(QALSTM, self).__init__()
         self.hidden_size = hidden_size
         self.embedding = tf.keras.layers.Embedding(input_size, hidden_size)
-        self.multihead_attn = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=hidden_size, value_dim=hidden_size, dtype=tf.float32)  # 添加 dtype 参数
-        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True, dtype=tf.float32)  # 添加 dtype 参数
+        self.multihead_attn = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=hidden_size, value_dim=hidden_size)  
+        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True)  
         self.fc = tf.keras.layers.Dense(output_size)
 
     def call(self, x):
@@ -75,7 +69,6 @@ class QALSTM(tf.keras.Model):
         output = tf.squeeze(output, axis=0)
         return output
 
-# 训练函数
 def train(strategy, questions, answers, char_to_idx, max_length):
     input_size = len(chars)
     hidden_size = 128
@@ -118,20 +111,20 @@ def train(strategy, questions, answers, char_to_idx, max_length):
                 total_loss += loss
                 print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
             except Exception as e:
-                logger.error("训练步骤中发生错误：%s", e)
+                logger.error("Error in training step: %s", e)
                 logger.error(traceback.format_exc())
 
         if not os.path.exists(save_dir):
             try:
                 os.makedirs(save_dir)
             except Exception as e:
-                logger.error("无法创建目录：%s", e)
+                logger.error("Failed to create directory: %s", e)
                 logger.error(traceback.format_exc())
 
         try:
             model.save(os.path.join(save_dir, 'qalstm_model'))
         except Exception as e:
-            logger.error("无法保存模型：%s", e)
+            logger.error("Failed to save model: %s", e)
             logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
@@ -140,5 +133,5 @@ if __name__ == "__main__":
         with strategy.scope():
             train(strategy, questions, answers, char_to_idx, max_length)
     except Exception as e:
-        logger.error("训练过程中发生错误：%s", e)
+        logger.error("Error during training: %s", e)
         logger.error(traceback.format_exc())
