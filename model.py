@@ -1,11 +1,11 @@
 import os
 import socket
-import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import time
 
 # 数据集，假设有一组问题和对应的回答
 questions = open("questions.txt", "r", encoding="utf-8").readlines()
@@ -44,24 +44,25 @@ class QALSTM(nn.Module):
         x = self.fc(x)
         return x
 
-def train(rank, world_size, device_ips, port):
+def start_server(rank, world_size, device_ips, port, server_started):
+    if rank == 0:
+        # 启动服务器
+        server_started.value = True
+        print("Server started on rank 0")
+
+def train(rank, world_size, device_ips, port, server_started):
     # 获取本机 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
     os.environ['MASTER_ADDR'] = local_ip
     os.environ['MASTER_PORT'] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
 
-    if rank == 0:
-        print("Waiting for all nodes to come online...")
-
     # 等待所有节点上线
-    while True:
+    while not server_started.value:
         time.sleep(1)
-        if dist.get_world_size() == world_size:
-            break
 
-    if rank == 0:
-        print("All nodes are online.")
+    # 分布式同步点
+    dist.barrier()
 
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
@@ -109,12 +110,6 @@ if __name__ == "__main__":
     device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()
     port = "12345"  # 设置端口号
     world_size = len(device_ips)  # 设置世界大小，即使用的设备数量
-    mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
-
-
-
-
-    
-
-    server_process.start()
-    mp.spawn(train, args=(world_size, device_queue), nprocs=world_size, join=True)
+    server_started = mp.Value('b', False)
+    mp.spawn(start_server, args=(world_size, device_ips, port, server_started), nprocs=1)
+    mp.spawn(train, args=(world_size, device_ips, port, server_started), nprocs=world_size, join=True)
