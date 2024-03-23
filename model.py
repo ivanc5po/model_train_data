@@ -42,10 +42,13 @@ def train(rank, world_size):
     # 获取本机 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
 
-    # 连接到集群
-    tf.config.experimental_connect_to_cluster()
-
     # 设置分布式参数
+    cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver()
+
+    # 连接到集群
+    tf.config.experimental_connect_to_cluster(cluster_resolver)
+
+    # 使用分布式策略
     strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
     # 使用分布式策略
