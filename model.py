@@ -43,7 +43,7 @@ def train(rank, world_size, device_ips, port):
     # 设置分布式环境
     os.environ['MASTER_ADDR'] = device_ips[0]
     os.environ['MASTER_PORT'] = port
-    dist.init_process_group("tcp", rank=rank, world_size=world_size)
+    dist.init_process_group("gloo", rank=rank, world_size=world_size)
 
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
