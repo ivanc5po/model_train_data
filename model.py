@@ -62,7 +62,7 @@ def train(rank, world_size, device_ips, port):
     device = torch.device("cpu")
     torch.manual_seed(0)  # 为了保证可重复性，设置随机种子
     model = QALSTM(input_size, hidden_size, num_layers, output_size, num_heads)
-    model = nn.parallel.DistributedDataParallel(model, device_ids=[rank])
+    model = nn.parallel.DistributedDataParallel(model)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
