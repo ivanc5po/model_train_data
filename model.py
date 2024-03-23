@@ -23,7 +23,7 @@ public_ip = get_public_ip()
 ip_list = ['208.68.39.112:12345', '143.244.164.42:12345']
 os.environ['TF_CONFIG'] = json.dumps({
     'cluster': {
-        'worker': 
+        'worker': ip_list
     },
     'task': {'type': 'worker', 'index': ip_list.index(public_ip)}
 })
