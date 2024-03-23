@@ -36,7 +36,6 @@ class QALSTM(tf.keras.Model):
         lstm_output = self.lstm(attn_output)
         output = self.fc(lstm_output)
         return output
-
 def train(rank, world_size):
     # 获取本机 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
@@ -87,7 +86,7 @@ def train(rank, world_size):
                 gradients = tape.gradient(loss, model.trainable_variables)
                 
                 # Aggregate gradients across replicas
-                gradients = [strategy.reduce(tf.distribute.ReduceOp.SUM, grad, axis=None) for grad in gradients]
+                gradients = [tf.distribute.get_replica_context().all_reduce(tf.distribute.ReduceOp.SUM, grad) for grad in gradients]
                 
                 # Apply aggregated gradients
                 optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -101,4 +100,3 @@ if __name__ == "__main__":
     world_size = 5
     for i in range(world_size):
         train(i, world_size)
-
