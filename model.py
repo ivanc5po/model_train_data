@@ -7,7 +7,11 @@ import logging
 import traceback
 
 # Configure collective operations at program startup
-tf.config.experimental.set_memory_growth(tf.config.experimental.list_physical_devices('CPU')[0], True)
+os.environ['TF_CONFIG'] = json.dumps({
+    'cluster': {'worker': ["localhost:12345"]},
+    'task': {'type': 'worker', 'index': 0},  
+    'environment': 'cloud' 
+})
 
 # Define a logger
 logger = logging.getLogger(__name__)
