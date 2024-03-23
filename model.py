@@ -76,13 +76,12 @@ class QALSTM(nn.Module):
 
 def train(rank, world_size, questions, answers, tokenizer, max_length):
     torch.manual_seed(0)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.cuda.set_device(rank % torch.cuda.device_count())
+    device = torch.device("cpu")
 
     vocab_size = len(tokenizer) + 1
-    hidden_size = 64
+    hidden_size = 128
     output_size = vocab_size
-    num_heads = 4
+    num_heads = 8
 
     model = QALSTM(vocab_size, hidden_size, output_size, num_heads).to(device)
     model = DDP(model, device_ids=[rank % torch.cuda.device_count()])
@@ -126,7 +125,7 @@ if __name__ == "__main__":
     try:
         world_size = int(os.environ['WORLD_SIZE'])
         rank = int(os.environ['RANK'])
-        dist.init_process_group("nccl", rank=rank, world_size=world_size)
+        dist.init_process_group("gloo", rank=rank, world_size=world_size)
         train(rank, world_size, tokenizer, max_length)
     except Exception as e:
         logger.error("Error during training: %s", e)
