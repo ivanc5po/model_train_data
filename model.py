@@ -38,29 +38,26 @@ class QALSTM(tf.keras.Model):
         output = self.fc(lstm_output)
         return output
 
-def train(rank, world_size, device_ips, ports):
+def train(rank, world_size):
     # 获取本机 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
 
-    # 设置分布式参数
-    cluster_spec = {"worker": [(ip + ":" + port) for ip, port in zip(device_ips, ports)]}
-
     # 连接到集群
-    cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver(cluster_spec)
-    tf.config.experimental_connect_to_cluster(cluster_resolver)
-    tf.distribute.experimental_set_strategy(tf.distribute.experimental.MultiWorkerMirroredStrategy())
+    tf.config.experimental_connect_to_cluster()
 
-    print("正在載入模型, 節點:", rank)
-    
-    # 模型参数
-    input_size = len(chars)  # 输入大小为字符集大小
-    hidden_size = 128  # Changed hidden_size here
-    num_layers = 8  # Changed num_layers here
-    output_size = len(chars)  # 输出大小与输入大小相同
-    num_heads = 8  # 多头注意力的头数
+    # 设置分布式参数
+    strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
-    # 创建模型和优化器
-    with tf.device("/job:worker/task:{}".format(rank)):
+    # 使用分布式策略
+    with strategy.scope():
+        # 模型参数
+        input_size = len(chars)  # 输入大小为字符集大小
+        hidden_size = 128  # Changed hidden_size here
+        num_layers = 8  # Changed num_layers here
+        output_size = len(chars)  # 输出大小与输入大小相同
+        num_heads = 8  # 多头注意力的头数
+
+        # 创建模型和优化器
         model = QALSTM(input_size, hidden_size, num_layers, output_size, num_heads)
         optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
@@ -85,11 +82,10 @@ def train(rank, world_size, device_ips, ports):
 
             total_loss += loss.numpy()
 
-        print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
+        print(f'Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
 if __name__ == "__main__":
-    device_ips = ["208.68.39.112", "143.244.164.42", "208.68.36.142", "178.128.148.143", "157.230.88.11"]
-    ports = ["12345", "12345", "12345", "12345", "12345"]  # 设置端口号
-    world_size = len(device_ips)  # 设置世界大小，即使用的设备数量
+    # 设置世界大小，即使用的设备数量
+    world_size = 5
     for i in range(world_size):
-        train(i, world_size, device_ips, ports)
+        train(i, world_size)
