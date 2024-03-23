@@ -61,9 +61,9 @@ def train(rank, world_size, device_ips, port):
     # 创建模型和优化器
     device = torch.device("cpu")
     torch.manual_seed(0)  # 为了保证可重复性，设置随机种子
-    model = QALSTM(input_size, hidden_size, num_layers, output_size, num_heads).to(device)
+    model = QALSTM(input_size, hidden_size, num_layers, output_size, num_heads)
     model = nn.parallel.DistributedDataParallel(model, device_ids=[rank])
-    criterion = nn.CrossEntropyLoss().to(device)
+    criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
     # 数据集大小
