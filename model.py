@@ -123,4 +123,4 @@ if __name__ == "__main__":
     port = "12345"
     world_size = len(device_ips)
     lock_file_path = "training.lock"
-    mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
+    mp.spawn(train, args=(world_size, device_ips, port, lock_file_path), nprocs=world_size, join=True)
