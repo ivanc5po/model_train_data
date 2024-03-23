@@ -5,6 +5,7 @@ import traceback
 import requests
 import numpy as np
 import tensorflow as tf
+from sklearn.preprocessing import MinMaxScaler
 
 def get_public_ip():
     try:
@@ -50,6 +51,16 @@ def text_to_tensor(text, char_to_idx, max_length):
     return np.array(tensor)
 
 max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
+
+# Normalization function
+def normalize_data(data):
+    scaler = MinMaxScaler()
+    scaled_data = scaler.fit_transform(data)
+    return scaled_data, scaler
+
+# Normalize questions and answers
+questions_normalized, scaler_questions = normalize_data(questions)
+answers_normalized, scaler_answers = normalize_data(answers)
 
 class QALSTM(tf.keras.Model):
     def __init__(self, input_size, hidden_size, output_size, num_heads):
@@ -104,8 +115,8 @@ def train(strategy, questions, answers, char_to_idx, max_length):
     for epoch in range(num_epochs):
         total_loss = 0
         for i in range(dataset_size):
-            question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
-            answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
+            question_tensor = text_to_tensor(questions_normalized[i], char_to_idx, max_length)
+            answer_tensor = text_to_tensor(answers_normalized[i], char_to_idx, max_length)
             try:
                 loss = strategy.run(train_step, args=(tf.constant([question_tensor]), tf.constant([answer_tensor])))
                 total_loss += loss
@@ -131,7 +142,7 @@ if __name__ == "__main__":
     try:
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
         with strategy.scope():
-            train(strategy, questions, answers, char_to_idx, max_length)
+            train(strategy, questions_normalized, answers_normalized, char_to_idx, max_length)
     except Exception as e:
         logger.error("Error during training: %s", e)
         logger.error(traceback.format_exc())
