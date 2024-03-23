@@ -55,7 +55,7 @@ class QALSTM(tf.keras.Model):
         self.hidden_size = hidden_size
         self.embedding = tf.keras.layers.Embedding(vocab_size, hidden_size)
         self.multihead_attn = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=hidden_size, value_dim=hidden_size)  
-        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True, dtype=tf.float32)  
+        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True)  
         self.fc = tf.keras.layers.Dense(output_size)
 
     def call(self, x):
