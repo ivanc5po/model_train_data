@@ -21,7 +21,6 @@ def text_to_tensor(text, char_to_idx, max_length):
 # 获取最大长度
 max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
 
-# 构建问答模型
 class QALSTM(tf.keras.Model):
     def __init__(self, input_size, hidden_size, output_size, num_heads):
         super(QALSTM, self).__init__()
@@ -36,10 +35,10 @@ class QALSTM(tf.keras.Model):
         attn_output = self.multihead_attn(x, x, x)
         lstm_output = self.lstm(attn_output)
         output = self.fc(lstm_output)
+        
         # Ensure output shape matches target shape
-        output = tf.squeeze(output, axis=1)  # Squeeze out the middle dimension
+        output = tf.squeeze(output, axis=0)  # Remove the batch dimension
         return output
-
 
 def train(strategy, questions, answers, char_to_idx, max_length):
     # 模型参数
