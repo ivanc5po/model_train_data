@@ -3,13 +3,12 @@ import json
 import logging
 import traceback
 import requests
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
-import torch.multiprocessing as mp
-from torch.utils.data import Dataset, DataLoader
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import DataLoader, TensorDataset
 
 def get_public_ip():
     try:
@@ -22,19 +21,13 @@ def get_public_ip():
         print("error:", e)
     return None
 
-def setup(rank, world_size):
-    os.environ['MASTER_ADDR'] = '127.0.0.1'
-    os.environ['MASTER_PORT'] = '29500'
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
-
-def cleanup():
-    dist.destroy_process_group()
-
 public_ip = get_public_ip()
 
 ip_list = ['208.68.39.112:12345', '143.244.164.42:12345']
-os.environ['RANK'] = str(ip_list.index(public_ip+":12345"))
+os.environ['MASTER_ADDR'] = ip_list[0].split(':')[0]
+os.environ['MASTER_PORT'] = ip_list[0].split(':')[1]
 os.environ['WORLD_SIZE'] = str(len(ip_list))
+os.environ['RANK'] = str(ip_list.index(public_ip+":12345"))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -52,86 +45,80 @@ except Exception as e:
     exit(1)
 
 # Tokenization and Padding
-tokenizer = torch.jit.load('tokenizer.pth')
-questions_sequences = tokenizer(questions)
-answers_sequences = tokenizer(answers)
-max_length = max(max(len(seq) for seq in questions_sequences), max(len(seq) for seq in answers_sequences))
-questions_padded = torch.nn.utils.rnn.pad_sequence(questions_sequences, batch_first=True, padding_value=0)
-answers_padded = torch.nn.utils.rnn.pad_sequence(answers_sequences, batch_first=True, padding_value=0)
+tokenizer = torch.nn.utils.rnn.pad_sequence([torch.tensor([tokenizer.word_index[word] for word in sentence.split()]) for sentence in questions + answers], batch_first=True)
+max_length = tokenizer.size(1)
 
 class QALSTM(nn.Module):
     def __init__(self, vocab_size, hidden_size, output_size, num_heads):
         super(QALSTM, self).__init__()
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(vocab_size, hidden_size)
-        self.multihead_attn = nn.MultiheadAttention(hidden_size, num_heads=num_heads)  
-        self.lstm = nn.LSTM(hidden_size, hidden_size, batch_first=True)  
+        self.multihead_attn = nn.MultiheadAttention(hidden_size, num_heads=num_heads)
+        self.lstm = nn.LSTM(hidden_size, hidden_size, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
         x = self.embedding(x)
-        x = x.permute(1, 0, 2)  # Change from (batch_size, seq_len, hidden_size) to (seq_len, batch_size, hidden_size) for LSTM
+        x = x.permute(1, 0, 2)  # batch_first=True
         attn_output, _ = self.multihead_attn(x, x, x)
-        attn_output = attn_output.permute(1, 0, 2)  # Change back to (batch_size, seq_len, hidden_size)
         lstm_output, _ = self.lstm(attn_output)
         output = self.fc(lstm_output)
-        return output
+        return output.permute(1, 0, 2)  # back to (batch, seq_len, features)
 
-def train(model, device, train_loader, optimizer, criterion):
-    model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output = model(data)
-        output = output.permute(0, 2, 1)  # Change from (batch_size, seq_len, vocab_size) to (batch_size, vocab_size, seq_len) for loss calculation
-        loss = criterion(output, target)
-        loss.backward()
-        optimizer.step()
+def train(rank, world_size, questions, answers, tokenizer, max_length):
+    torch.manual_seed(0)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    torch.cuda.set_device(rank % torch.cuda.device_count())
 
-def main(rank, world_size):
-    try:
-        setup(rank, world_size)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        vocab_size = 10000  # Set your vocabulary size here
-        hidden_size = 128
-        output_size = vocab_size
-        num_heads = 8
+    vocab_size = len(tokenizer) + 1
+    hidden_size = 128
+    output_size = vocab_size
+    num_heads = 8
 
-        model = QALSTM(vocab_size, hidden_size, output_size, num_heads).to(device)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[rank])
+    model = QALSTM(vocab_size, hidden_size, output_size, num_heads).to(device)
+    model = DDP(model, device_ids=[rank % torch.cuda.device_count()])
 
-        optimizer = optim.Adam(model.parameters(), lr=0.01)
-        criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-        dataset = YourDataset(questions_padded, answers_padded)  # Define your dataset class and initialization
-        train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
-        train_loader = DataLoader(dataset, batch_size=64, sampler=train_sampler)
+    dataset_size = len(questions)
 
-        num_epochs = 100
-        for epoch in range(num_epochs):
-            train(model, device, train_loader, optimizer, criterion)
-            print('Epoch [{}/{}]'.format(epoch+1, num_epochs))
-
-        if not os.path.exists(save_dir):
+    for epoch in range(100):
+        total_loss = 0
+        for i in range(dataset_size):
+            question_tensor = questions[i].unsqueeze(0).to(device)
+            answer_tensor = answers[i].unsqueeze(0).to(device)
             try:
-                os.makedirs(save_dir)
+                optimizer.zero_grad()
+                output = model(question_tensor)
+                loss = nn.functional.cross_entropy(output.squeeze(0), answer_tensor.squeeze(0))
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+                print(f'Rank [{rank+1}/{world_size}], Epoch [{epoch+1}/100], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
             except Exception as e:
-                logger.error("Failed to create directory: %s", e)
+                logger.error("Error in training step: %s", e)
                 logger.error(traceback.format_exc())
 
-        try:
-            torch.save(model.state_dict(), os.path.join(save_dir, 'qalstm_model.pth'))
-        except Exception as e:
-            logger.error("Failed to save model: %s", e)
-            logger.error(traceback.format_exc())
+        if rank == 0:
+            if not os.path.exists(save_dir):
+                try:
+                    os.makedirs(save_dir)
+                except Exception as e:
+                    logger.error("Failed to create directory: %s", e)
+                    logger.error(traceback.format_exc())
 
+            try:
+                torch.save(model.module.state_dict(), os.path.join(save_dir, 'qalstm_model.pth'))
+            except Exception as e:
+                logger.error("Failed to save model: %s", e)
+                logger.error(traceback.format_exc())
+
+if __name__ == "__main__":
+    try:
+        world_size = int(os.environ['WORLD_SIZE'])
+        rank = int(os.environ['RANK'])
+        dist.init_process_group("nccl", rank=rank, world_size=world_size)
+        train(rank, world_size, tokenizer, max_length)
     except Exception as e:
         logger.error("Error during training: %s", e)
         logger.error(traceback.format_exc())
-
-    finally:
-        cleanup()
-
-if __name__ == "__main__":
-    world_size = int(os.environ['WORLD_SIZE'])
-    mp.spawn(main, args=(world_size,), nprocs=world_size, join=True)
