@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset
 from collections import Counter
-import multiprocessing as mp
+from multiprocessing import Process
 
 def get_public_ip():
     try:
@@ -122,8 +122,13 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
 if __name__ == "__main__":
     try:
         world_size = int(os.environ['WORLD_SIZE'])
-        rank = int(os.environ['RANK'])
-        mp.spawn(train, args=(world_size, tokenizer, max_length), nprocs=world_size, join=True)
+        processes = []
+        for rank in range(world_size):
+            p = Process(target=train, args=(rank, world_size, tokenizer, max_length))
+            p.start()
+            processes.append(p)
+        for p in processes:
+            p.join()
     except Exception as e:
         logger.error("Error during training: %s", e)
         logger.error(traceback.format_exc())
