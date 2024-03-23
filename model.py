@@ -65,7 +65,7 @@ class QALSTM(nn.Module):
         output = self.fc(lstm_output)
         return output.permute(1, 0, 2)  # back to (batch, seq_len, features)
 
-def train(rank, world_size, questions, answers, tokenizer, max_length):
+def train(rank, world_size, tokenizer, max_length):
     torch.manual_seed(0)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.cuda.set_device(rank % torch.cuda.device_count())
