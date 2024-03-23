@@ -1,26 +1,24 @@
-import tensorflow as tf
-import numpy as np
 import os
 import json
-import time
 import logging
 import traceback
 
-os.environ.pop('TF_CONFIG', None)
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-port = 12345
-os.environ['TF_CONFIG'] =  json.dumps({
+# Set up TensorFlow environment variables before importing TensorFlow
+os.environ['TF_CONFIG'] = json.dumps({
     'cluster': {
-        'worker': f'208.68.39.112:{port} 143.244.164.42:{port}'.split()
+        'worker': ['208.68.39.112:12345', '143.244.164.42:12345']  # Update with actual worker addresses and ports
     },
     'task': {'type': 'worker', 'index': 0}
 })
 
-tf.device('CPU')
+import tensorflow as tf
+import numpy as np
+
+# Set TensorFlow logging level
+tf.get_logger().setLevel(logging.INFO)
 
 # Define a logger
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
 
 save_dir = 'model'
 
@@ -128,4 +126,3 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error("Error occurred during training: %s", e)
         logger.error(traceback.format_exc())
-
