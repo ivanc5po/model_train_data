@@ -92,7 +92,7 @@ def main(rank, world_size):
     try:
         setup(rank, world_size)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        vocab_size = tokenizer.vocab_size
+        vocab_size = 10000  # Set your vocabulary size here
         hidden_size = 128
         output_size = vocab_size
         num_heads = 8
