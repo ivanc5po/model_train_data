@@ -114,7 +114,7 @@ if __name__ == "__main__":
     try:
         port = 12345
         cluster_spec = {
-            'worker': f'143.244.164.42:{port} 208.68.39.112:{port}'.split()
+            'worker': f'208.68.39.112:{port} 143.244.164.42:{port}'.split()
         }
         os.environ['TF_CONFIG'] = json.dumps({
             'cluster': cluster_spec,
