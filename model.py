@@ -6,6 +6,7 @@ import time
 import logging
 import traceback
 
+os.environ.pop('TF_CONFIG', None)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 port = 12345
 os.environ['TF_CONFIG'] =  json.dumps({
