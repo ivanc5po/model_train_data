@@ -69,12 +69,14 @@ def train(strategy, questions, answers, char_to_idx, max_length):
                     output = model(question_tensor)
                     # Ensure the output shape matches the target shape
                     expected_shape = tf.shape(answer_tensor)
+                    # Transpose the output tensor to match the target shape
                     output = tf.transpose(output, perm=[1, 0, 2])  # Transpose to (batch_size, sequence_length, vocab_size)
                     output = output[:expected_shape[0]]  # Trim the output to match the target shape
                     loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
                 grads = tape.gradient(loss, model.trainable_variables)
                 optimizer.apply_gradients(zip(grads, model.trainable_variables))
                 return loss
+
 
             per_replica_losses = strategy.run(train_step, args=((tf.constant([question_tensor], dtype=tf.int32), tf.constant([answer_tensor], dtype=tf.int32)),))
             total_loss += strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
