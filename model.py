@@ -58,13 +58,21 @@ class QALSTM(nn.Module):
         x = self.fc(x)
         return x
 
-def create_lock_file(lock_file_path):
-    with open(lock_file_path, 'w') as lock_file:
-        lock_file.write("LOCK")
+def check_online(world_size, device_queue):
+    local_ip = socket.gethostbyname(socket.gethostname())
+    os.environ['MASTER_ADDR'] = local_ip
+    os.environ['MASTER_PORT'] = port
+    dist.init_process_group("gloo", rank=0, world_size=world_size)
 
-def check_lock_file(lock_file_path):
-    return os.path.exists(lock_file_path)
+    devices_online = set()
+    while len(devices_online) < world_size:
+        device_id = dist.recv(src=dist.any_source)
+        devices_online.add(device_id.item())
+        device_queue.put(device_id.item())
 
+    # 确保所有设备都上线后再继续
+    dist.barrier()
+    
 def train(rank, world_size, device_queue):
     device_id = device_queue.get()
     os.environ['RANK'] = str(rank)
