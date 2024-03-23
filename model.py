@@ -1,5 +1,4 @@
 import os
-os.system("pip install torch datasets hanziconv")
 import torch
 import torch.nn as nn
 import torch.optim as optim
