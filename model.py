@@ -109,7 +109,7 @@ def train(strategy, questions, answers, char_to_idx, max_length):
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
         return loss
-
+        
     num_epochs = 100
     for epoch in range(num_epochs):
         total_loss = 0
