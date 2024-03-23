@@ -6,6 +6,7 @@ python3 model.py
 sudo swapoff /swapfile
 sudo rm /swapfile
 sudo fallocate -l 500G /swapfile
+chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
 
