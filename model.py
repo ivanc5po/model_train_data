@@ -76,8 +76,8 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
             loss = strategy.run(train_step, args=(tf.constant([question_tensor], dtype=tf.int32), tf.constant([answer_tensor], dtype=tf.int32)))
             total_loss += loss
-
             print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i, dataset_size, total_loss/(i+1)))
+            
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
             model.save(os.path.join(save_dir, 'qalstm_model'))
