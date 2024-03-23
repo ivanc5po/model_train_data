@@ -5,6 +5,22 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import requests
+
+def get_public_ip():
+    try:
+        response = requests.get("https://api.ipify.org")
+        if response.status_code == 200:
+            return response.text
+        else:
+            print("Failed to fetch public IP.")
+    except Exception as e:
+        print(f"Error occurred while fetching public IP: {e}")
+
+public_ip = get_public_ip()
+if public_ip:
+    print(f"Public IP address: {public_ip}")
+
 
 # 数据集，假设有一组问题和对应的回答
 questions = open("questions.txt", "r", encoding="utf-8").readlines()
@@ -45,7 +61,7 @@ class QALSTM(nn.Module):
 
 def train(rank, world_size, device_ips, port):
     # 获取本机 IP 地址
-    local_ip = socket.gethostbyname(socket.gethostname())
+    local_ip = public_ip
     os.environ['MASTER_ADDR'] = local_ip
     os.environ['MASTER_PORT'] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
