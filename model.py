@@ -1,25 +1,11 @@
 import os
-import time
 import socket
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
-import requests
-from multiprocessing import Manager
-
-def get_public_ip():
-    try:
-        response = requests.get('https://api.ipify.org')
-        if response.status_code == 200:
-            return response.text.strip()
-        else:
-            print("Failed to retrieve public IP:", response.status_code)
-    except Exception as e:
-        print("Error occurred:", e)
-
-public_ip = get_public_ip()
 
 # 数据集，假设有一组问题和对应的回答
 questions = open("questions.txt", "r", encoding="utf-8").readlines()
@@ -58,29 +44,24 @@ class QALSTM(nn.Module):
         x = self.fc(x)
         return x
 
-def check_online(world_size, device_queue):
+def train(rank, world_size, device_ips, port):
+    # 获取本机 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
     os.environ['MASTER_ADDR'] = local_ip
     os.environ['MASTER_PORT'] = port
-    dist.init_process_group("gloo", rank=0, world_size=world_size)
-
-    devices_online = set()
-    while len(devices_online) < world_size:
-        device_id = dist.recv(src=dist.any_source)
-        devices_online.add(device_id.item())
-        device_queue.put(device_id.item())
-
-    # 确保所有设备都上线后再继续
-    dist.barrier()
-    
-def train(rank, world_size, device_queue):
-    device_id = device_queue.get()
-    os.environ['RANK'] = str(rank)
-    os.environ['LOCAL_RANK'] = str(rank)
-    os.environ['WORLD_SIZE'] = str(world_size)
-    os.environ['MASTER_PORT'] = port
-
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
+
+    if rank == 0:
+        print("Waiting for all nodes to come online...")
+
+    # 等待所有节点上线
+    while True:
+        time.sleep(1)
+        if dist.get_world_size() == world_size:
+            break
+
+    if rank == 0:
+        print("All nodes are online.")
 
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
@@ -96,6 +77,9 @@ def train(rank, world_size, device_queue):
     model = nn.parallel.DistributedDataParallel(model)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
+
+    # 同步所有进程
+    dist.barrier()
 
     # 数据集大小
     dataset_size = len(questions)
@@ -123,10 +107,14 @@ def train(rank, world_size, device_queue):
 
 if __name__ == "__main__":
     device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()
-    port = "12346"
-    world_size = len(device_ips)
-    device_queue = Manager().Queue()
+    port = "12345"  # 设置端口号
+    world_size = len(device_ips)  # 设置世界大小，即使用的设备数量
+    mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
 
-    server_process = mp.Process(target=check_online, args=(world_size, device_queue))
+
+
+
+    
+
     server_process.start()
     mp.spawn(train, args=(world_size, device_queue), nprocs=world_size, join=True)
