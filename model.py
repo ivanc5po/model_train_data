@@ -78,6 +78,7 @@ if __name__ == "__main__":
     ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
     cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver(ip_list)
     cluster_resolver.task_type = 'worker'
-    strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(cluster_resolver)
+    strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
+        communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
 
     train(strategy, questions, answers, char_to_idx, max_length)
