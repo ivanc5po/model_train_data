@@ -79,7 +79,8 @@ def train(rank, world_size, device_ips, port, server_started):
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     barrier.wait()
-
+    print("starting......")
+    
     # 数据集大小
     dataset_size = len(questions)
 
