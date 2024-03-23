@@ -111,10 +111,7 @@ def train(strategy, questions, answers, char_to_idx, max_length):
                 total_loss += loss
                 print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
             except Exception as e:
-                logger.error("Error occurred during training step:
-            logger.error("Error occurred during training step: %s", e)
-            logger.error(traceback.format_exc())
-            # You can choose to continue training or exit the program based on the severity of the error
+                logger.error("Error occurred during training step: %s", e)
 
         if not os.path.exists(save_dir):
             try:
