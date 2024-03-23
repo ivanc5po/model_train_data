@@ -71,12 +71,14 @@ def train(strategy, questions, answers, char_to_idx, max_length):
                     expected_shape = tf.shape(answer_tensor)
                     output_shape = tf.shape(output)
                     pad_size = tf.maximum(expected_shape[1] - output_shape[1], 0)
-                    output = tf.pad(output, paddings=[[0, 0], [0, pad_size], [0, 0]])
+                    paddings = [[0, 0], [0, pad_size], [0, 0]]
+                    output = tf.pad(output, paddings, constant_values=0.0)
                     output = output[:, :expected_shape[1], :]  # Trim output to match sequence length
                     loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
                 grads = tape.gradient(loss, model.trainable_variables)
                 optimizer.apply_gradients(zip(grads, model.trainable_variables))
                 return loss
+
 
 
             per_replica_losses = strategy.run(train_step, args=((tf.constant([question_tensor], dtype=tf.int32), tf.constant([answer_tensor], dtype=tf.int32)),))
