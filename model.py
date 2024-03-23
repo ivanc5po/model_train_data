@@ -28,7 +28,7 @@ class QALSTM(tf.keras.Model):
         self.num_layers = num_layers
         self.embedding = tf.keras.layers.Embedding(input_size, hidden_size)
         self.multihead_attn = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=hidden_size)
-        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True)
+        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True, num_layers=num_layers)  # Changed num_layers here
         self.fc = tf.keras.layers.Dense(output_size)
 
     def call(self, x):
@@ -54,8 +54,8 @@ def train(rank, world_size, device_ips, port):
     
     # 模型参数
     input_size = len(chars)  # 输入大小为字符集大小
-    hidden_size = 4096
-    num_layers = 48
+    hidden_size = 128  # Changed hidden_size here
+    num_layers = 8  # Changed num_layers here
     output_size = len(chars)  # 输出大小与输入大小相同
     num_heads = 8  # 多头注意力的头数
 
@@ -84,7 +84,8 @@ def train(rank, world_size, device_ips, port):
             optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
             total_loss += loss.numpy()
-            print('Device {} - Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, i, dataset_size, total_loss/(i+1)))
+
+        print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
 
 if __name__ == "__main__":
     device_ips = ["208.68.39.112", "143.244.164.42", "208.68.36.142", "178.128.148.143", "157.230.88.11"]
