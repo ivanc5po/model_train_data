@@ -1,5 +1,5 @@
 import os
-os.system("pip install torch 
+os.system("pip install torch datasets hanziconv")
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -86,6 +86,6 @@ def train(rank, world_size, device_ips, port):
 
 if __name__ == "__main__":
     world_size = 2  # 设置世界大小，即使用的设备数量
-    device_ips = ["192.168.1.1", "172.86.75.122"]  # 设置设备的IP地址
+    device_ips = ["193.149.129.144", "172.86.75.122"]  # 设置设备的IP地址
     port = "12345"  # 设置端口号
     mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
