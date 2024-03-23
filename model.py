@@ -36,8 +36,10 @@ class QALSTM(tf.keras.Model):
         attn_output = self.multihead_attn(x, x, x)
         lstm_output = self.lstm(attn_output)
         output = self.fc(lstm_output)
-        output = output[:, -1, :]
+        # Ensure output shape matches target shape
+        output = tf.squeeze(output, axis=1)  # Squeeze out the middle dimension
         return output
+
 
 def train(strategy, questions, answers, char_to_idx, max_length):
     # 模型参数
