@@ -5,6 +5,19 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import requests
+
+def get_public_ip():
+    try:
+        response = requests.get('https://api.ipify.org')
+        if response.status_code == 200:
+            return response.text.strip()
+        else:
+            print("Failed to retrieve public IP:", response.status_code)
+    except Exception as e:
+        print("Error occurred:", e)
+
+public_ip = get_public_ip()
 
 # 数据集，假设有一组问题和对应的回答
 questions = open("questions.txt", "r", encoding="utf-8").readlines()
@@ -44,7 +57,7 @@ class QALSTM(nn.Module):
         return x
 
 def train(rank, world_size, device_ips, port):
-    os.environ['MASTER_ADDR'] = device_ips[0]
+    os.environ['MASTER_ADDR'] = public_ip
     os.environ['MASTER_PORT'] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
 
@@ -95,4 +108,4 @@ if __name__ == "__main__":
     device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()  # 设置设备的IP地址
     port = "12345"  # 设置端口号
     world_size = len(device_ips)  # 设置世界大小，即使用的设备数量
-    mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
+    mp.spawn(train, args=(device_ips.index(public_ip), device_ips, port), nprocs=world_size, join=True)
