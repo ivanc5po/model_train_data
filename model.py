@@ -25,7 +25,7 @@ os.environ['TF_CONFIG'] = json.dumps({
     'cluster': {
         'worker': ip_list
     },
-    'task': {'type': 'worker', 'index': ip_list.index(public_ip)}
+    'task': {'type': 'worker', 'index': ip_list.index(public_ip+":12345")}
 })
 
 import tensorflow as tf
