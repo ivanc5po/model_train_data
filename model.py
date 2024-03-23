@@ -5,8 +5,6 @@ import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
 
-os.system("apt install python3-pip && pip install torch hanziconv datasets")
-
 # 数据集，假设有一组问题和对应的回答
 questions = open("questions.txt", "r", encoding="utf-8").readlines()
 answers = open("answers.txt", "r", encoding="utf-8").readlines()
