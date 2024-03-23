@@ -74,7 +74,8 @@ def train(rank, world_size, device_ips, port):
         time.sleep(0.5)
         if all(check_lock_file(lock_file_path.replace(f".{i}.lock", "")) for i in range(world_size)):
             break
-            
+    
+    os.remove(lock_file_path)
     print("online!")
 
     # 模型参数
