@@ -56,6 +56,9 @@ def text_to_tensor(text, char_to_idx, max_length):
 
 max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
 
+def cast_to_int32(tensor):
+    return tf.cast(tensor, tf.int32)
+    
 # Model Definition
 class QALSTM(tf.keras.Model):
     def __init__(self, input_size, hidden_size, output_size, num_heads):
@@ -88,8 +91,10 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
     dataset_size = len(questions)
 
-    @tf.function
+   @tf.function
     def train_step(question_tensor, answer_tensor):
+        question_tensor = cast_to_int32(question_tensor)
+        answer_tensor = cast_to_int32(answer_tensor)
         with tf.GradientTape() as tape:
             output = model(question_tensor)
             loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
