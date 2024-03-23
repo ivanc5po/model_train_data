@@ -78,9 +78,7 @@ def train(rank, world_size, device_ips, port, server_started):
     model = nn.parallel.DistributedDataParallel(model)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
-
-    # 同步所有进程
-    dist.barrier()
+    barrier.wait()
 
     # 数据集大小
     dataset_size = len(questions)
