@@ -95,14 +95,15 @@ def wait_for_nodes(cluster_resolver, num_nodes):
             time.sleep(3)  # Wait for 30 seconds before checking again
 
 if __name__ == "__main__":
-    # 定義IP地址和埠號的列表
     ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
     
-    # 建立分散策略
+    # Define the TF_CONFIG for the chief worker (main node)
     os.environ['TF_CONFIG'] = json.dumps({
         'cluster': {'worker': ip_list},
-        'task': {'type': 'worker', 'index': 0}  # 在這裡指定節點類型和索引
+        'task': {'type': 'worker', 'index': 0},  # Chief worker has index 0
+        'environment': 'cloud'  # Assuming this is running in a cloud environment
     })
+
     strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
 
