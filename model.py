@@ -60,8 +60,7 @@ def train(cluster_resolver, rank):
         dataset_size = len(questions)
 
         # 计算任务数量
-        tasks = cluster_resolver.get_task_info()
-        num_tasks = len(tasks)
+        num_tasks = cluster_resolver.num_tasks(cluster_resolver.task_type)
 
         # 训练模型
         num_epochs = 100
