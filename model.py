@@ -2,9 +2,9 @@ import os
 import json
 import logging
 import traceback
-import os
-import json
 import requests
+import numpy as np
+import tensorflow as tf
 
 def get_public_ip():
     try:
@@ -27,9 +27,6 @@ os.environ['TF_CONFIG'] = json.dumps({
     },
     'task': {'type': 'worker', 'index': ip_list.index(public_ip+":12345")}
 })
-
-import tensorflow as tf
-import numpy as np
 
 # Set TensorFlow logging level
 tf.get_logger().setLevel(logging.INFO)
@@ -95,13 +92,6 @@ def train(strategy, questions, answers, char_to_idx, max_length):
     def train_step(question_tensor, answer_tensor):
         with tf.GradientTape() as tape:
             output = model(question_tensor)
-            output = tf.expand_dims(output, axis=0)  # Adding back batch dimension
-            expected_shape = tf.shape(answer_tensor)
-            output_shape = tf.shape(output)
-            pad_size = tf.maximum(expected_shape[1] - output_shape[1], 0)
-            paddings = [[0, 0], [0, pad_size], [0, 0]]
-            output = tf.pad(output, paddings, constant_values=0.0)
-            output = output[:, :expected_shape[1], :]
             loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
