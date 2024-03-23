@@ -59,13 +59,13 @@ def train(strategy, questions, answers, char_to_idx, max_length):
         total_loss = 0
         for i in range(dataset_size):
             question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
-            answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
+            answer_tensor = tf.reshape(answer_tensor, (-1,))
 
             def train_step(inputs):
                 question_tensor, answer_tensor = inputs
                 with tf.GradientTape() as tape:
                     output = model(question_tensor)
-                    output = tf.squeeze(output, axis=0)
+                    output = tf.reshape(output, (-1, output_size))
                     loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
                 grads = tape.gradient(loss, model.trainable_variables)
                 optimizer.apply_gradients(zip(grads, model.trainable_variables))
