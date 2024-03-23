@@ -6,8 +6,6 @@ import time
 import logging
 import traceback
 
-tf.device('CPU')
-
 # Define a logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
@@ -33,6 +31,15 @@ def text_to_tensor(text, char_to_idx, max_length):
     return np.array(tensor)
 
 max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
+
+# Initialize TensorFlow environment
+try:
+    strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
+        communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
+except Exception as e:
+    logger.error("Failed to create MultiWorkerMirroredStrategy: %s", e)
+    logger.error(traceback.format_exc())
+    exit(1)
 
 # Model Definition
 class QALSTM(tf.keras.Model):
@@ -110,41 +117,9 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             logger.error("Failed to save model: %s", e)
             logger.error(traceback.format_exc())
 
-def wait_for_nodes(cluster_resolver, num_nodes):
-    while True:
-        cluster_spec = cluster_resolver.cluster_spec().as_dict()
-        print("Cluster Spec:", cluster_spec)
-        
-        if 'worker' in cluster_spec and len(cluster_spec['worker']) == num_nodes:
-            print("All nodes are online. Starting distributed computation.")
-            break
-        else:
-            print("Waiting for all nodes to come online...")
-            time.sleep(3)  # Wait for 3 seconds before checking again
-
 if __name__ == "__main__":
-    # Define IP addresses and port numbers list
-    ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
-    
-    # Set the environment variable for distributed training
-    os.environ['TF_CONFIG'] = json.dumps({
-        'cluster': {'worker': ip_list},
-        'task': {'type': 'worker', 'index': 0},  # Set the index of this worker
-        'environment': 'cloud'  # Assuming this is running in a cloud environment
-    })
-    
-    # Initialize TensorFlow environment
-    try:
-        strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
-            communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
-    except Exception as e:
-        logger.error("Failed to create MultiWorkerMirroredStrategy: %s", e)
-        logger.error(traceback.format_exc())
-        exit(1)
-
     try:
         train(strategy, questions, answers, char_to_idx, max_length)
     except Exception as e:
         logger.error("Error occurred during training: %s", e)
         logger.error(traceback.format_exc())
-        exit(1)
