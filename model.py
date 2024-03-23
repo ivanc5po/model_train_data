@@ -22,13 +22,12 @@ max_length = max(max(len(question), len(answer)) for question, answer in zip(que
 
 # 构建问答模型
 class QALSTM(tf.keras.Model):
-    def __init__(self, input_size, hidden_size, num_layers, output_size, num_heads):
+    def __init__(self, input_size, hidden_size, output_size, num_heads):
         super(QALSTM, self).__init__()
         self.hidden_size = hidden_size
-        self.num_layers = num_layers
         self.embedding = tf.keras.layers.Embedding(input_size, hidden_size)
         self.multihead_attn = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=hidden_size)
-        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True, num_layers=num_layers)  # Changed num_layers here
+        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True)  # Removed num_layers here
         self.fc = tf.keras.layers.Dense(output_size)
 
     def call(self, x):
@@ -56,12 +55,11 @@ def train(rank, world_size):
         # 模型参数
         input_size = len(chars)  # 输入大小为字符集大小
         hidden_size = 128  # Changed hidden_size here
-        num_layers = 8  # Changed num_layers here
         output_size = len(chars)  # 输出大小与输入大小相同
         num_heads = 8  # 多头注意力的头数
 
         # 创建模型和优化器
-        model = QALSTM(input_size, hidden_size, num_layers, output_size, num_heads)
+        model = QALSTM(input_size, hidden_size, output_size, num_heads)
         optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
     # 数据集大小
