@@ -125,6 +125,7 @@ if __name__ == "__main__":
     try:
         world_size = int(os.environ['WORLD_SIZE'])
         rank = int(os.environ['RANK'])
+        print(rank)
         dist.init_process_group("gloo", rank=rank, world_size=world_size)
         train(rank, world_size, tokenizer, max_length)
     except Exception as e:
