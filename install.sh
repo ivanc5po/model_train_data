@@ -1,5 +1,5 @@
 apt install python3-pip -y
-pip install tensorflow hanziconv datasets requests
+pip install tensorflow sklearn hanziconv datasets requests
 cd model_train_data
 
 sudo swapoff /swapfile
