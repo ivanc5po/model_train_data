@@ -83,8 +83,8 @@ def train(strategy, questions, answers, char_to_idx, max_length):
 
     @tf.function
     def train_step(question_tensor, answer_tensor):
-        question_tensor = tf.cast(question_tensor, tf.float32)
-        answer_tensor = tf.cast(answer_tensor, tf.float32)
+        question_tensor = tf.cast(question_tensor, tf.int32)
+        answer_tensor = tf.cast(answer_tensor, tf.int32)
     
         with tf.GradientTape() as tape:
             output = model(question_tensor)
