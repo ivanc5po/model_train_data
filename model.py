@@ -2,13 +2,24 @@ import tensorflow as tf
 import numpy as np
 import os
 import json
-import time  # Import time module for waiting
+import time
+import logging
+import traceback
+
+# Define a logger
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
 
 save_dir = 'model'
 
 # Data Preparation
-questions = open("questions.txt", "r", encoding="utf-8").readlines()
-answers = open("answers.txt", "r", encoding="utf-8").readlines()
+try:
+    questions = open("questions.txt", "r", encoding="utf-8").readlines()
+    answers = open("answers.txt", "r", encoding="utf-8").readlines()
+except Exception as e:
+    logger.error("Failed to read data files: %s", e)
+    logger.error(traceback.format_exc())
+    exit(1)
 
 chars = sorted(list(set(''.join(questions + answers))))
 char_to_idx = {ch: i for i, ch in enumerate(chars)}
@@ -75,14 +86,40 @@ def train(strategy, questions, answers, char_to_idx, max_length):
         for i in range(dataset_size):
             question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
             answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
-            loss = strategy.run(train_step, args=(tf.constant([question_tensor], dtype=tf.int32), tf.constant([answer_tensor], dtype=tf.int32)))
-            total_loss += loss
-            print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
-            
+            try:
+                loss = strategy.run(train_step, args=(tf.constant([question_tensor], dtype=tf.int32), tf.constant([answer_tensor], dtype=tf.int32)))
+                total_loss += loss
+                print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
+            except Exception as e:
+                logger.error("Error occurred during training step: %s", e)
+                logger.error(traceback.format_exc())
+                # You can choose to continue training or exit the program based on the severity of the error
+
         if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        model.save(os.path.join(save_dir, 'qalstm_model'))  # Move this outside the loop
+            try:
+                os.makedirs(save_dir)
+            except Exception as e:
+                logger.error("Failed to create directory: %s", e)
+                logger.error(traceback.format_exc())
+
+        try:
+            model.save(os.path.join(save_dir, 'qalstm_model'))
+        except Exception as e:
+            logger.error("Failed to save model: %s", e)
+            logger.error(traceback.format_exc())
+            
+def wait_for_nodes(cluster_resolver, num_nodes):
+    while True:
+        cluster_spec = cluster_resolver.cluster_spec().as_dict()
+        print("Cluster Spec:", cluster_spec)
         
+        if 'worker' in cluster_spec and len(cluster_spec['worker']) == num_nodes:
+            print("All nodes are online. Starting distributed computation.")
+            break
+        else:
+            print("Waiting for all nodes to come online...")
+            time.sleep(3)  # Wait for 3 seconds before checking again
+
 if __name__ == "__main__":
     # Define IP addresses and port numbers list
     ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
@@ -95,7 +132,17 @@ if __name__ == "__main__":
     })
     
     # Create a MultiWorkerMirroredStrategy for distributed training
-    strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
-        communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
+    try:
+        strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
+            communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
+    except Exception as e:
+        logger.error("Failed to create MultiWorkerMirroredStrategy: %s", e)
+        logger.error(traceback.format_exc())
+        exit(1)
 
-    train(strategy, questions, answers, char_to_idx, max_length)
+    try:
+        train(strategy, questions, answers, char_to_idx, max_length)
+    except Exception as e:
+        logger.error("Error occurred during training: %s", e)
+        logger.error(traceback.format_exc())
+        exit(1)
