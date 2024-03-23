@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import json
+import time  # Import time module for waiting
 
 save_dir = 'model'
 
@@ -15,7 +16,7 @@ idx_to_char = {i: ch for i, ch in enumerate(chars)}
 
 def text_to_tensor(text, char_to_idx, max_length):
     tensor = [char_to_idx[ch] for ch in text if ch in char_to_idx]
-    tensor += [0] * (max_length - len(tensor)) 
+    tensor += [0] * (max_length - len(tensor))
     return np.array(tensor)
 
 max_length = max(max(len(question), len(answer)) for question, answer in zip(questions, answers))
@@ -76,11 +77,11 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
             loss = strategy.run(train_step, args=(tf.constant([question_tensor], dtype=tf.int32), tf.constant([answer_tensor], dtype=tf.int32)))
             total_loss += loss
-            print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i, dataset_size, total_loss/(i+1)))
+            print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
             
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-            model.save(os.path.join(save_dir, 'qalstm_model'))
+        model.save(os.path.join(save_dir, 'qalstm_model'))  # Move this outside the loop
 
 def wait_for_nodes(cluster_resolver, num_nodes):
     while True:
@@ -92,18 +93,20 @@ def wait_for_nodes(cluster_resolver, num_nodes):
             break
         else:
             print("Waiting for all nodes to come online...")
-            time.sleep(3)  # Wait for 30 seconds before checking again
+            time.sleep(3)  # Wait for 3 seconds before checking again
 
 if __name__ == "__main__":
+    # Define IP addresses and port numbers list
     ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
     
-    # Define the TF_CONFIG for the chief worker (main node)
+    # Set the environment variable for distributed training
     os.environ['TF_CONFIG'] = json.dumps({
         'cluster': {'worker': ip_list},
-        'task': {'type': 'worker', 'index': 0},  # Chief worker has index 0
+        'task': {'type': 'worker', 'index': 0},  # Here we set the index of this worker
         'environment': 'cloud'  # Assuming this is running in a cloud environment
     })
-
+    
+    # Create a MultiWorkerMirroredStrategy for distributed training
     strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=tf.distribute.experimental.CollectiveCommunication.AUTO)
 
