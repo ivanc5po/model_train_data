@@ -90,7 +90,7 @@ if __name__ == "__main__":
     # Wait until all nodes are online
     print("Waiting for all nodes to come online...")
     while len(cluster_resolver.get_task_addresses()) < len(ip_list):
-        time.sleep(10)  # Adjust sleep time as needed
+        time.sleep(1)  # Adjust sleep time as needed
 
     strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy(
         cluster_resolver=cluster_resolver,
