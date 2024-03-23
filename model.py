@@ -73,7 +73,7 @@ def train(strategy, questions, answers, char_to_idx, max_length):
             loss = strategy.run(train_step, args=(tf.constant([question_tensor], dtype=tf.int32), tf.constant([answer_tensor], dtype=tf.int32)))
             total_loss += loss
 
-        print('Epoch [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, total_loss/dataset_size))
+            print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i, dataset_size, total_loss/(i+1)))
 
 if __name__ == "__main__":
     ip_list = ["208.68.39.112:12345", "143.244.164.42:12345", "208.68.36.142:12345", "178.128.148.143:12345", "157.230.88.11:12345"]
