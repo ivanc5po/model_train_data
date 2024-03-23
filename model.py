@@ -60,9 +60,7 @@ class QALSTM(nn.Module):
         return x
 
 def train(rank, world_size, device_ips, port):
-    # 获取本机 IP 地址
-    local_ip = public_ip
-    os.environ['MASTER_ADDR'] = local_ip
+    os.environ['MASTER_ADDR'] = device_ips[0]
     os.environ['MASTER_PORT'] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
     print(local_ip)
