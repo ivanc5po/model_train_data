@@ -4,7 +4,12 @@ import logging
 import traceback
 import requests
 import numpy as np
-import tensorflow as tf
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.utils.data import Dataset, DataLoader
 
 def get_public_ip():
     try:
@@ -17,96 +22,95 @@ def get_public_ip():
         print("error:", e)
     return None
 
+def setup(rank, world_size):
+    os.environ['MASTER_ADDR'] = '127.0.0.1'
+    os.environ['MASTER_PORT'] = '29500'
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+def cleanup():
+    dist.destroy_process_group()
+
 public_ip = get_public_ip()
 
 ip_list = ['208.68.39.112:12345', '143.244.164.42:12345']
-os.environ['TF_CONFIG'] = json.dumps({
-    'cluster': {
-        'worker': ip_list
-    },
-    'task': {'type': 'worker', 'index': ip_list.index(public_ip+":12345")}
-})
+os.environ['RANK'] = str(ip_list.index(public_ip+":12345"))
+os.environ['WORLD_SIZE'] = str(len(ip_list))
 
-tf.get_logger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 save_dir = 'model'
 
 try:
-    questions = open("questions.txt", "r", encoding="utf-8").readlines()
-    answers = open("answers.txt", "r", encoding="utf-8").readlines()
+    with open("questions.txt", "r", encoding="utf-8") as f:
+        questions = f.readlines()
+    with open("answers.txt", "r", encoding="utf-8") as f:
+        answers = f.readlines()
 except Exception as e:
     logger.error("Failed to read data files: %s", e)
     logger.error(traceback.format_exc())
     exit(1)
 
 # Tokenization and Padding
-tokenizer = tf.keras.preprocessing.text.Tokenizer(filters='')
-tokenizer.fit_on_texts(questions + answers)
-questions_sequences = tokenizer.texts_to_sequences(questions)
-answers_sequences = tokenizer.texts_to_sequences(answers)
+tokenizer = torch.jit.load('tokenizer.pth')
+questions_sequences = tokenizer(questions)
+answers_sequences = tokenizer(answers)
 max_length = max(max(len(seq) for seq in questions_sequences), max(len(seq) for seq in answers_sequences))
-questions_padded = tf.keras.preprocessing.sequence.pad_sequences(questions_sequences, maxlen=max_length, padding='post')
-answers_padded = tf.keras.preprocessing.sequence.pad_sequences(answers_sequences, maxlen=max_length, padding='post')
+questions_padded = torch.nn.utils.rnn.pad_sequence(questions_sequences, batch_first=True, padding_value=0)
+answers_padded = torch.nn.utils.rnn.pad_sequence(answers_sequences, batch_first=True, padding_value=0)
 
-class QALSTM(tf.keras.Model):
+class QALSTM(nn.Module):
     def __init__(self, vocab_size, hidden_size, output_size, num_heads):
         super(QALSTM, self).__init__()
         self.hidden_size = hidden_size
-        self.embedding = tf.keras.layers.Embedding(vocab_size, hidden_size)
-        self.multihead_attn = tf.keras.layers.MultiHeadAttention(num_heads=num_heads, key_dim=hidden_size, value_dim=hidden_size)  
-        self.lstm = tf.keras.layers.LSTM(hidden_size, return_sequences=True)  
-        self.fc = tf.keras.layers.Dense(output_size)
+        self.embedding = nn.Embedding(vocab_size, hidden_size)
+        self.multihead_attn = nn.MultiheadAttention(hidden_size, num_heads=num_heads)  
+        self.lstm = nn.LSTM(hidden_size, hidden_size, batch_first=True)  
+        self.fc = nn.Linear(hidden_size, output_size)
 
-    def call(self, x):
+    def forward(self, x):
         x = self.embedding(x)
-        attn_output = self.multihead_attn(x, x, x)
-        lstm_output = self.lstm(attn_output)
+        x = x.permute(1, 0, 2)  # Change from (batch_size, seq_len, hidden_size) to (seq_len, batch_size, hidden_size) for LSTM
+        attn_output, _ = self.multihead_attn(x, x, x)
+        attn_output = attn_output.permute(1, 0, 2)  # Change back to (batch_size, seq_len, hidden_size)
+        lstm_output, _ = self.lstm(attn_output)
         output = self.fc(lstm_output)
-        
-        output = tf.squeeze(output, axis=0)
         return output
 
-def train(strategy, questions, answers, tokenizer, max_length):
-    vocab_size = len(tokenizer.word_index) + 1
-    hidden_size = 128
-    output_size = vocab_size
-    num_heads = 8
+def train(model, device, train_loader, optimizer, criterion):
+    model.train()
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
+        optimizer.zero_grad()
+        output = model(data)
+        output = output.permute(0, 2, 1)  # Change from (batch_size, seq_len, vocab_size) to (batch_size, vocab_size, seq_len) for loss calculation
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
 
-    model = QALSTM(vocab_size, hidden_size, output_size, num_heads)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+def main(rank, world_size):
+    try:
+        setup(rank, world_size)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        vocab_size = tokenizer.vocab_size
+        hidden_size = 128
+        output_size = vocab_size
+        num_heads = 8
 
-    dataset_size = len(questions)
+        model = QALSTM(vocab_size, hidden_size, output_size, num_heads).to(device)
+        model = nn.parallel.DistributedDataParallel(model, device_ids=[rank])
 
-    @tf.function
-    def train_step(question_tensor, answer_tensor):
-        with tf.GradientTape() as tape:
-            output = model(question_tensor)
-            output = tf.expand_dims(output, axis=0)
-            expected_shape = tf.shape(answer_tensor)
-            output_shape = tf.shape(output)
-            pad_size = tf.maximum(expected_shape[1] - output_shape[1], 0)
-            paddings = [[0, 0], [0, pad_size], [0, 0]]
-            output = tf.pad(output, paddings, constant_values=0.0)
-            output = output[:, :expected_shape[1], :]
-            loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
-        grads = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(grads, model.trainable_variables))
-        return loss
-        
-    num_epochs = 100
-    for epoch in range(num_epochs):
-        total_loss = 0
-        for i in range(dataset_size):
-            question_tensor = questions[i]
-            answer_tensor = answers[i]
-            try:
-                loss = strategy.run(train_step, args=(tf.constant([question_tensor]), tf.constant([answer_tensor])))
-                total_loss += loss
-                print('Epoch [{}/{}], data [{}/{}], Loss: {:.5f}'.format(epoch+1, num_epochs, i+1, dataset_size, total_loss/(i+1)))
-            except Exception as e:
-                logger.error("Error in training step: %s", e)
-                logger.error(traceback.format_exc())
+        optimizer = optim.Adam(model.parameters(), lr=0.01)
+        criterion = nn.CrossEntropyLoss()
+
+        dataset = YourDataset(questions_padded, answers_padded)  # Define your dataset class and initialization
+        train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+        train_loader = DataLoader(dataset, batch_size=64, sampler=train_sampler)
+
+        num_epochs = 100
+        for epoch in range(num_epochs):
+            train(model, device, train_loader, optimizer, criterion)
+            print('Epoch [{}/{}]'.format(epoch+1, num_epochs))
 
         if not os.path.exists(save_dir):
             try:
@@ -116,16 +120,18 @@ def train(strategy, questions, answers, tokenizer, max_length):
                 logger.error(traceback.format_exc())
 
         try:
-            model.save(os.path.join(save_dir, 'qalstm_model'))
+            torch.save(model.state_dict(), os.path.join(save_dir, 'qalstm_model.pth'))
         except Exception as e:
             logger.error("Failed to save model: %s", e)
             logger.error(traceback.format_exc())
 
-if __name__ == "__main__":
-    try:
-        strategy = tf.distribute.MultiWorkerMirroredStrategy()
-        with strategy.scope():
-            train(strategy, questions_padded, answers_padded, tokenizer, max_length)
     except Exception as e:
         logger.error("Error during training: %s", e)
         logger.error(traceback.format_exc())
+
+    finally:
+        cleanup()
+
+if __name__ == "__main__":
+    world_size = int(os.environ['WORLD_SIZE'])
+    mp.spawn(main, args=(world_size,), nprocs=world_size, join=True)
