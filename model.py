@@ -123,7 +123,7 @@ def train(rank, world_size, device_queue):
 
 if __name__ == "__main__":
     device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()
-    port = "12345"
+    port = str(random.randint(10000, 20000))
     world_size = len(device_ips)
     device_queue = Manager().Queue()
 
