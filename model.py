@@ -79,7 +79,7 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
     num_layers = 2
     num_heads = 8
 
-    dist.init_process_group("gloo")
+    dist.init_process_group("gloo", rank=rank, world_size=world_size)
     
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
     model = DDP(model)
