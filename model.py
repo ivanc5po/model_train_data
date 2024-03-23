@@ -69,6 +69,7 @@ def train(rank, world_size, device_ips, port):
     os.environ['MASTER_PORT'] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
     print("IP:", public_ip, " num:", device_ips.index(public_ip))
+    create_lock_file(lock_file_path)
     
     while True:
         time.sleep(0.5)
@@ -118,7 +119,8 @@ def train(rank, world_size, device_ips, port):
         print(f'Device {rank} - Epoch [{epoch+1}/{num_epochs}], Average Loss: {total_loss/(dataset_size/world_size):.5f}')
 
 if __name__ == "__main__":
-    device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()  # 设置设备的IP地址
-    port = "12345"  # 设置端口号
-    world_size = len(device_ips)  # 设置世界大小，即使用的设备数量
+    device_ips = "208.68.39.112 143.244.164.42 208.68.36.142 178.128.148.143 157.230.88.11".split()
+    port = "12345"
+    world_size = len(device_ips)
+    lock_file_path = "training.lock"
     mp.spawn(train, args=(world_size, device_ips, port), nprocs=world_size, join=True)
