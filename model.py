@@ -122,7 +122,8 @@ if __name__ == "__main__":
         })
         
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
-        train(strategy, questions, answers, char_to_idx, max_length)
+        with strategy.scope():
+            train(strategy, questions, answers, char_to_idx, max_length)
     except Exception as e:
         logger.error("Error occurred during training: %s", e)
         logger.error(traceback.format_exc())
