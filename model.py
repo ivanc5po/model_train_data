@@ -36,6 +36,7 @@ class QALSTM(tf.keras.Model):
         lstm_output = self.lstm(attn_output)
         output = self.fc(lstm_output)
         return output
+
 def train(rank, world_size):
     # 获取本机 IP 地址
     local_ip = socket.gethostbyname(socket.gethostname())
@@ -73,24 +74,26 @@ def train(rank, world_size):
                 question_tensor = text_to_tensor(questions[i], char_to_idx, max_length)
                 answer_tensor = text_to_tensor(answers[i], char_to_idx, max_length)
 
-                with tf.GradientTape() as tape:
-                    output = model(tf.constant([question_tensor], dtype=tf.int32))
-                    
-                    # Reshape output to match target shape
-                    output = tf.squeeze(output, axis=0)
-                    
-                    # Compute loss
-                    loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
+                def train_step(question_tensor, answer_tensor):
+                    with tf.GradientTape() as tape:
+                        output = model(tf.constant([question_tensor], dtype=tf.int32))
+                        
+                        # Reshape output to match target shape
+                        output = tf.squeeze(output, axis=0)
+                        
+                        # Compute loss
+                        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(answer_tensor, output, from_logits=True))
 
-                # Calculate gradients within replica context
-                gradients = tape.gradient(loss, model.trainable_variables)
-                
-                # Aggregate gradients across replicas
-                gradients = [tf.distribute.get_replica_context().all_reduce(tf.distribute.ReduceOp.SUM, grad) for grad in gradients]
-                
-                # Apply aggregated gradients
-                optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+                    # Calculate gradients within replica context
+                    gradients = tape.gradient(loss, model.trainable_variables)
+                    
+                    # Apply gradients
+                    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+                    
+                    return loss
 
+                # Execute the training step within the replica context
+                loss = strategy.run(train_step, args=(question_tensor, answer_tensor))
                 total_loss += loss.numpy()
 
             print('Device {} - Epoch [{}/{}], Loss: {:.5f}'.format(rank, epoch+1, num_epochs, total_loss/dataset_size))
