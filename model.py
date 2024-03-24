@@ -68,11 +68,9 @@ class QATransformer(nn.Module):
         return output
 
 def train(rank, world_size, questions, answers, tokenizer, max_length):
-    print("starting......")
     torch.manual_seed(0)
     device = torch.device("cpu")
 
-    print("1")
     vocab_size = len(tokenizer) + 1
     hidden_size = 128
     num_layers = 2
@@ -80,16 +78,12 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
 
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
     
-    print("2")
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
     model = DDP(model)
 
-    print("3")
     optimizer = optim.Adam(model.parameters(), lr=0.01)
-
     dataset_size = len(questions)
 
-    print("4")
     for epoch in range(100):
         total_loss = 0
         for i in range(dataset_size):
@@ -100,7 +94,9 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
             loss = nn.functional.cross_entropy(output.squeeze(0), answer_tensor.squeeze(0))
             loss.backward()
             optimizer.step()
+            print(1)
             total_loss += loss.item()
+            print(2)
             print(f'Rank [{rank+1}/{world_size}], Epoch [{epoch+1}/100], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
 
         if rank == 0:
@@ -120,6 +116,7 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
 if __name__ == "__main__":
     world_size = int(os.environ['WORLD_SIZE'])
     processes = []
+    print("starting......")
     for rank in range(world_size):
         p = Process(target=train, args=(rank, world_size, questions, answers, tokenizer, max_length))
         p.start()
