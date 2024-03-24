@@ -72,6 +72,7 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
     torch.manual_seed(0)
     device = torch.device("cpu")
 
+    print("1")
     vocab_size = len(tokenizer) + 1
     hidden_size = 128
     num_layers = 2
@@ -79,13 +80,16 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
 
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
     
+    print("2")
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
     model = DDP(model)
 
+    print("3")
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
     dataset_size = len(questions)
 
+    print("4")
     for epoch in range(100):
         total_loss = 0
         for i in range(dataset_size):
