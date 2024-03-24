@@ -59,7 +59,7 @@ def train(questions, answers, tokenizer, max_length):
     
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
 
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
     dataset_size = len(questions)
 
     for epoch in range(100):
@@ -96,3 +96,4 @@ def train(questions, answers, tokenizer, max_length):
 
 if __name__ == "__main__":
     train(questions, answers, tokenizer, max_length)
+
