@@ -96,17 +96,13 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
         for i in range(dataset_size):
             question_tensor = questions[i].unsqueeze(0).to(device)
             answer_tensor = answers[i].unsqueeze(0).to(device)
-            try:
-                optimizer.zero_grad()
-                output = model(question_tensor, answer_tensor)
-                loss = nn.functional.cross_entropy(output.squeeze(0), answer_tensor.squeeze(0))
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-                print(f'Rank [{rank+1}/{world_size}], Epoch [{epoch+1}/100], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
-            except Exception as e:
-                logger.error("Error in training step: %s", e)
-                logger.error(traceback.format_exc())
+            optimizer.zero_grad()
+            output = model(question_tensor, answer_tensor)
+            loss = nn.functional.cross_entropy(output.squeeze(0), answer_tensor.squeeze(0))
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            print(f'Rank [{rank+1}/{world_size}], Epoch [{epoch+1}/100], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
 
         if rank == 0:
             if not os.path.exists(save_dir):
