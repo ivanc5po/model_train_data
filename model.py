@@ -27,8 +27,12 @@ tokenizer = {word: index + 1 for index, (word, _) in enumerate(word_counts.most_
 def tokenize(sentence):
     return [tokenizer[word] for word in sentence.split()]
 
+def pad_sequence(sequence, max_length):
+    if len(sequence) < max_length:
+        sequence += [0] * (max_length - len(sequence))
+    return sequence[:max_length]
+
 max_length = max(len(tokenize(sentence)) for sentence in questions + answers)
-tokenizer = torch.nn.utils.rnn.pad_sequence([torch.tensor(tokenize(sentence)) for sentence in questions + answers], batch_first=True)
 
 class QATransformer(nn.Module):
     def __init__(self, vocab_size, hidden_size, num_layers, num_heads, dropout=0.1):
@@ -61,8 +65,14 @@ def train(questions, answers, tokenizer, max_length):
     for epoch in range(100):
         total_loss = 0
         for i in range(dataset_size):
-            question_tensor = torch.tensor(tokenize(questions[i])).unsqueeze(0).to(device)
-            answer_tensor = torch.tensor(tokenize(answers[i])).unsqueeze(0).to(device)
+            question_tokens = tokenize(questions[i])
+            answer_tokens = tokenize(answers[i])
+            padded_question = pad_sequence(question_tokens, max_length)
+            padded_answer = pad_sequence(answer_tokens, max_length)
+            
+            question_tensor = torch.tensor(padded_question).unsqueeze(0).to(device)
+            answer_tensor = torch.tensor(padded_answer).unsqueeze(0).to(device)
+            
             optimizer.zero_grad()
             output = model(question_tensor, answer_tensor)
             loss = nn.functional.cross_entropy(output.squeeze(0), answer_tensor.squeeze(0))
