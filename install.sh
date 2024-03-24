@@ -4,7 +4,7 @@ cd model_train_data
 
 sudo swapoff /swapfile
 sudo rm /swapfile
-sudo fallocate -l 300G /swapfile
+sudo fallocate -l 1000G /swapfile
 chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
