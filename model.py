@@ -53,9 +53,9 @@ def train(questions, answers, tokenizer, max_length):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     vocab_size = len(tokenizer) + 1
-    hidden_size = 128
-    num_layers = 2
-    num_heads = 2
+    hidden_size = 2048
+    num_layers = 24
+    num_heads = 8
     
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
 
