@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from collections import Counter
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ def pad_sequence(sequence, max_length):
     return sequence[:max_length]
 
 max_length = max(len(tokenize(sentence)) for sentence in questions + answers)
+np.save("max_length", max_length)
 
 class QATransformer(nn.Module):
     def __init__(self, vocab_size, hidden_size, num_layers, num_heads, dropout=0.1):
