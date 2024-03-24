@@ -11,7 +11,7 @@ from collections import Counter
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-save_dir = 'model'
+save_dir = 'models/model'
 
 with open("questions.txt", "r", encoding="utf-8") as f:
     questions = f.readlines()
@@ -53,9 +53,9 @@ def train(questions, answers, tokenizer, max_length):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     vocab_size = len(tokenizer) + 1
-    hidden_size = 1024
-    num_layers = 12
-    num_heads = 8
+    hidden_size = 4096
+    num_layers = 32
+    num_heads = 24
     
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
 
