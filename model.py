@@ -53,9 +53,9 @@ def train(questions, answers, tokenizer, max_length):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     vocab_size = len(tokenizer) + 1
-    hidden_size = 2048
-    num_layers = 24
-    num_heads = 8
+    hidden_size = 4096
+    num_layers = 48
+    num_heads = 24
     
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
 
@@ -81,9 +81,8 @@ def train(questions, answers, tokenizer, max_length):
             total_loss += loss.item()
             print(f'Epoch [{epoch+1}/100], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
 
-        if not os.path.exists(save_dir):
             try:
-                os.makedirs(save_dir)
+                os.makedirs(save_dir+"_"+str(epoch+1)+"_"+str(i+1))
             except Exception as e:
                 logger.error("Failed to create directory: %s", e)
                 logger.error(traceback.format_exc())
