@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # Load model
     model_path = 'model/qatransformer_model.pth'
     vocab_size = len(tokenizer) + 1  # Add 1 for padding token
-    hidden_size = 1024
+    hidden_size = 2048
     num_layers = 24
     num_heads = 8
     max_length = 100  # Set maximum length for padding
