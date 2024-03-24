@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import numpy as np
 from collections import Counter
 
 class QATransformer(nn.Module):
@@ -47,7 +46,7 @@ if __name__ == "__main__":
     num_layers = 32
     num_heads = 32
     model_path = 'models/model.pth'  # Path to the trained model
-
+    
     # Load the trained model
     model = load_model(model_path, vocab_size, hidden_size, num_layers, num_heads)
 
