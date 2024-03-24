@@ -55,7 +55,7 @@ def train(questions, answers, tokenizer, max_length):
     vocab_size = len(tokenizer) + 1
     hidden_size = 4096
     num_layers = 32
-    num_heads = 24
+    num_heads = 32
     
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
 
