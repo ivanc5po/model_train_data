@@ -11,7 +11,7 @@ from collections import Counter
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-save_dir = 'models/model'
+save_dir = 'models'
 
 with open("questions.txt", "r", encoding="utf-8") as f:
     questions = f.readlines()
