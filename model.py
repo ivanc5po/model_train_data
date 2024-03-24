@@ -36,15 +36,10 @@ logger = logging.getLogger(__name__)
 
 save_dir = 'model'
 
-try:
-    with open("questions.txt", "r", encoding="utf-8") as f:
-        questions = f.readlines()
-    with open("answers.txt", "r", encoding="utf-8") as f:
-        answers = f.readlines()
-except Exception as e:
-    logger.error("Failed to read data files: %s", e)
-    logger.error(traceback.format_exc())
-    exit(1)
+with open("questions.txt", "r", encoding="utf-8") as f:
+    questions = f.readlines()
+with open("answers.txt", "r", encoding="utf-8") as f:
+    answers = f.readlines()
 
 # Tokenization and Padding
 word_counts = Counter()
@@ -119,15 +114,12 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
                 logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
-    try:
-        world_size = int(os.environ['WORLD_SIZE'])
-        processes = []
-        for rank in range(world_size):
-            p = Process(target=train, args=(rank, world_size, questions, answers, tokenizer, max_length))
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
-    except Exception as e:
-        logger.error("Error during training: %s", e)
-        logger.error(traceback.format_exc())
+    world_size = int(os.environ['WORLD_SIZE'])
+    processes = []
+    for rank in range(world_size):
+        p = Process(target=train, args=(rank, world_size, questions, answers, tokenizer, max_length))
+        p.start()
+        processes.append(p)
+    for p in processes:
+        p.join()
+        
