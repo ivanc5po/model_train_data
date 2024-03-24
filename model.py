@@ -48,7 +48,7 @@ class QATransformer(nn.Module):
         output = self.fc(output)
         return output
 
-def train(questions, answers, tokenizer, max_length):
+def train_subset(questions_subset, answers_subset, tokenizer, max_length, epoch_num, data_index):
     torch.manual_seed(0)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -60,13 +60,13 @@ def train(questions, answers, tokenizer, max_length):
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=0.000001)
-    dataset_size = len(questions)
+    dataset_size = len(questions_subset)
 
-    for epoch in range(100):
+    for epoch in range(epoch_num):
         total_loss = 0
         for i in range(dataset_size):
-            question_tokens = tokenize(questions[i])
-            answer_tokens = tokenize(answers[i])
+            question_tokens = tokenize(questions_subset[i])
+            answer_tokens = tokenize(answers_subset[i])
             padded_question = pad_sequence(question_tokens, max_length)
             padded_answer = pad_sequence(answer_tokens, max_length)
             
@@ -79,10 +79,10 @@ def train(questions, answers, tokenizer, max_length):
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-            print(f'Epoch [{epoch+1}/100], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
+            print(f'Epoch [{epoch+1}/100], Data Index [{data_index}], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
 
             try:
-                os.makedirs(save_dir+"_"+str(epoch+1)+"_"+str(i+1))
+                os.makedirs(save_dir+"_"+str(data_index)+"_"+str(epoch+1)+"_"+str(i+1))
             except Exception as e:
                 logger.error("Failed to create directory: %s", e)
                 logger.error(traceback.format_exc())
@@ -93,6 +93,16 @@ def train(questions, answers, tokenizer, max_length):
             logger.error("Failed to save model: %s", e)
             logger.error(traceback.format_exc())
 
-if __name__ == "__main__":
-    train(questions, answers, tokenizer, max_length)
+def split_data(data, n):
+    chunk_size = len(data) // n
+    return [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
 
+def train_with_data_split(questions, answers, tokenizer, max_length, n):
+    question_chunks = split_data(questions, n)
+    answer_chunks = split_data(answers, n)
+
+    for i in range(n):
+        train_subset(question_chunks[i], answer_chunks[i], tokenizer, max_length, 100, i+1)
+
+if __name__ == "__main__":
+    train_with_data_split(questions, answers, tokenizer, max_length, 8)
