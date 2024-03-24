@@ -101,4 +101,4 @@ def train_with_data_split(questions, answers, tokenizer, max_length, n):
         train_subset(question_chunks[i], answer_chunks[i], tokenizer, max_length, 100, i+1)
 
 if __name__ == "__main__":
-    train_with_data_split(questions, answers, tokenizer, max_length, 64)
+    train_with_data_split(questions, answers, tokenizer, max_length, 4)
