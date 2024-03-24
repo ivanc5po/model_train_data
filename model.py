@@ -80,15 +80,9 @@ def train_subset(questions_subset, answers_subset, tokenizer, max_length, epoch_
             optimizer.step()
             total_loss += loss.item()
             print(f'Epoch [{epoch+1}/100], Data Index [{data_index}], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
-
-            try:
-                os.makedirs(save_dir+"_"+str(data_index)+"_"+str(epoch+1)+"_"+str(i+1))
-            except Exception as e:
-                logger.error("Failed to create directory: %s", e)
-                logger.error(traceback.format_exc())
-
+            
         try:
-            torch.save(model.state_dict(), os.path.join(save_dir, 'qatransformer_model.pth'))
+            torch.save(model.state_dict(), os.path.join(save_dir, 'model.pth'))
         except Exception as e:
             logger.error("Failed to save model: %s", e)
             logger.error(traceback.format_exc())
