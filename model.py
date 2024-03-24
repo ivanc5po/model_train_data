@@ -73,13 +73,14 @@ class QATransformer(nn.Module):
         return output
 
 def train(rank, world_size, questions, answers, tokenizer, max_length):
+    print("starting......")
     torch.manual_seed(0)
     device = torch.device("cpu")
 
     vocab_size = len(tokenizer) + 1
     hidden_size = 128
     num_layers = 2
-    num_heads = 8
+    num_heads = 2
 
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
     
