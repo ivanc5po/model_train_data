@@ -11,6 +11,6 @@ sudo swapon /swapfile
 sudo apt update
 sudo apt install ufw
 sudo ufw allow 12345/tcp
-mkdir model_train_data/models
+mkdir models
 python3 model.py
 
