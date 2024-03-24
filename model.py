@@ -2,34 +2,11 @@ import os
 import json
 import logging
 import traceback
-import requests
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset
 from collections import Counter
-from multiprocessing import Process
-
-def get_public_ip():
-    try:
-        response = requests.get('https://api64.ipify.org/')
-        if response.status_code == 200:
-            return response.text
-        else:
-            print("error code:", response.status_code)
-    except Exception as e:
-        print("error:", e)
-    return None
-
-public_ip = get_public_ip()
-
-ip_list = ['208.68.39.112:12345', '143.244.164.42:12345']
-os.environ['MASTER_ADDR'] = ip_list[0].split(":")[0]
-os.environ['MASTER_PORT'] = ip_list[0].split(":")[1]
-os.environ['WORLD_SIZE'] = str(len(ip_list))
-os.environ['RANK'] = str(ip_list.index(public_ip+":12345"))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,19 +44,16 @@ class QATransformer(nn.Module):
         output = self.fc(output)
         return output
 
-def train(rank, world_size, questions, answers, tokenizer, max_length):
+def train(questions, answers, tokenizer, max_length):
     torch.manual_seed(0)
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     vocab_size = len(tokenizer) + 1
     hidden_size = 128
     num_layers = 2
     num_heads = 2
-
-    dist.init_process_group("gloo", rank=rank, world_size=world_size)
     
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
-    model = DDP(model)
 
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     dataset_size = len(questions)
@@ -87,40 +61,28 @@ def train(rank, world_size, questions, answers, tokenizer, max_length):
     for epoch in range(100):
         total_loss = 0
         for i in range(dataset_size):
-            question_tensor = questions[i].unsqueeze(0).to(device)
-            answer_tensor = answers[i].unsqueeze(0).to(device)
+            question_tensor = torch.tensor(tokenize(questions[i])).unsqueeze(0).to(device)
+            answer_tensor = torch.tensor(tokenize(answers[i])).unsqueeze(0).to(device)
             optimizer.zero_grad()
             output = model(question_tensor, answer_tensor)
             loss = nn.functional.cross_entropy(output.squeeze(0), answer_tensor.squeeze(0))
             loss.backward()
             optimizer.step()
-            print(1)
             total_loss += loss.item()
-            print(2)
-            print(f'Rank [{rank+1}/{world_size}], Epoch [{epoch+1}/100], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
+            print(f'Epoch [{epoch+1}/100], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
 
-        if rank == 0:
-            if not os.path.exists(save_dir):
-                try:
-                    os.makedirs(save_dir)
-                except Exception as e:
-                    logger.error("Failed to create directory: %s", e)
-                    logger.error(traceback.format_exc())
-
+        if not os.path.exists(save_dir):
             try:
-                torch.save(model.module.state_dict(), os.path.join(save_dir, 'qatransformer_model.pth'))
+                os.makedirs(save_dir)
             except Exception as e:
-                logger.error("Failed to save model: %s", e)
+                logger.error("Failed to create directory: %s", e)
                 logger.error(traceback.format_exc())
 
+        try:
+            torch.save(model.state_dict(), os.path.join(save_dir, 'qatransformer_model.pth'))
+        except Exception as e:
+            logger.error("Failed to save model: %s", e)
+            logger.error(traceback.format_exc())
+
 if __name__ == "__main__":
-    world_size = int(os.environ['WORLD_SIZE'])
-    processes = []
-    print("starting......")
-    for rank in range(world_size):
-        p = Process(target=train, args=(rank, world_size, questions, answers, tokenizer, max_length))
-        p.start()
-        processes.append(p)
-    for p in processes:
-        p.join()
-        
+    train(questions, answers, tokenizer, max_length)
