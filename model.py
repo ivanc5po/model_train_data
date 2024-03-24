@@ -53,13 +53,13 @@ def train(questions, answers, tokenizer, max_length):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     vocab_size = len(tokenizer) + 1
-    hidden_size = 4096
+    hidden_size = 4800
     num_layers = 48
     num_heads = 24
     
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads).to(device)
 
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=0.000001)
     dataset_size = len(questions)
 
     for epoch in range(100):
