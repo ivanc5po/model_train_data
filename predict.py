@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-import json
+import numpy as np
+from collections import Counter
 
-# Define the QATransformer model class
 class QATransformer(nn.Module):
     def __init__(self, vocab_size, hidden_size, num_layers, num_heads, dropout=0.1):
         super(QATransformer, self).__init__()
@@ -17,7 +17,7 @@ class QATransformer(nn.Module):
         output = self.fc(output)
         return output
 
-def tokenize(sentence, tokenizer):
+def tokenize(sentence):
     return [tokenizer[word] for word in sentence.split()]
 
 def pad_sequence(sequence, max_length):
@@ -28,38 +28,39 @@ def pad_sequence(sequence, max_length):
 def load_model(model_path, vocab_size, hidden_size, num_layers, num_heads):
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads)
     model.load_state_dict(torch.load(model_path))
+    model.eval()
     return model
 
-def predict(model, question, tokenizer, max_length):
-    question_tokens = tokenize(question, tokenizer)
+def predict(question, model, tokenizer, max_length):
+    question_tokens = tokenize(question)
     padded_question = pad_sequence(question_tokens, max_length)
-    question_tensor = torch.tensor(padded_question).unsqueeze(0)  # Add batch dimension
-    output = model(question_tensor, question_tensor)  # Use question as both src and tgt
-    predicted_index = torch.argmax(output, dim=-1).squeeze(0)  # Remove batch dimension and get predicted index
-    predicted_words = [word for word, index in tokenizer.items() if index == predicted_index.item()]
-    return ' '.join(predicted_words)
+    question_tensor = torch.tensor(padded_question).unsqueeze(0)
+    output = model(question_tensor, question_tensor)  # Using the question itself as the target
+    predicted_answer_indices = output.squeeze(0).argmax(dim=-1)
+    predicted_answer = ' '.join([word for index, word in enumerate(predicted_answer_indices) if word != 0])
+    return predicted_answer
 
 if __name__ == "__main__":
-    # Load tokenizer
-    with open("tokenizer.json", "r", encoding="utf-8") as f:
-        tokenizer = json.load(f)
-    
-    # Load model
-    model_path = 'model.pth'
-    vocab_size = len(tokenizer) + 1  # Add 1 for padding token
+    # Define model parameters
+    vocab_size = np.load("max_length.npy")
     hidden_size = 2048
     num_layers = 32
     num_heads = 32
-    max_length = 100  # Set maximum length for padding
+    model_path = 'models/model.pth'  # Path to the trained model
 
+    # Load the trained model
     model = load_model(model_path, vocab_size, hidden_size, num_layers, num_heads)
-    model.eval()
 
-    # Continuous prediction loop
+    # Input loop
     while True:
-        question = input("Enter your question (or 'exit' to quit): ")
+        # Get question from user
+        question = input("Enter your question (type 'exit' to quit): ")
+
+        # Check if user wants to exit
         if question.lower() == 'exit':
             print("Exiting...")
             break
-        prediction = predict(model, question, tokenizer, max_length)
-        print("Predicted Answer:", prediction)
+
+        # Make prediction
+        predicted_answer = predict(question, model, tokenizer, max_length)
+        print("Predicted answer:", predicted_answer)
