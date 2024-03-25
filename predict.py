@@ -37,9 +37,9 @@ def load_max_length():
 
 def load_model():
     vocab_size = len(tokenizer) + 1
-    hidden_size = 3000
-    num_layers = 20
-    num_heads = 24
+    hidden_size = 2048
+    num_layers = 32
+    num_heads = 32
 
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads)
     model.load_state_dict(torch.load("model.pth"))
