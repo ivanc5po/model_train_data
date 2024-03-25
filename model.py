@@ -82,7 +82,9 @@ def train_subset(questions_subset, answers_subset, tokenizer, max_length, epoch_
             print(f'Epoch [{epoch+1}/100], Data Index [{data_index}], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
 
         torch.save(model.state_dict(), 'model.pth')
-
+        with open("tokenizer.json", "w", encoding="utf-8") as f:
+            json.dump(tokenizer, f)
+    
 def split_data(data, n):
     chunk_size = len(data) // n
     return [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
