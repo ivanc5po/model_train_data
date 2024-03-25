@@ -27,7 +27,7 @@ def load_model_and_predict(question, model_path, max_length):
     return predicted_answer
 
 if __name__ == "__main__":
-    model_path = '~/model.pth'  # Path to the trained model
+    model_path = 'model.pth'  # Path to the trained model
     max_length = 50  # Assuming max_length is known
 
     # Input loop
