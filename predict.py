@@ -37,7 +37,7 @@ def load_max_length():
 
 def load_model():
     vocab_size = len(tokenizer) + 1
-    hidden_size = 128
+    hidden_size = 3192
     num_layers = 32
     num_heads = 32
 
