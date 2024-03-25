@@ -37,8 +37,8 @@ def load_max_length():
 
 def load_model():
     vocab_size = len(tokenizer) + 1
-    hidden_size = 3072
-    num_layers = 24
+    hidden_size = 3000
+    num_layers = 20
     num_heads = 24
 
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads)
