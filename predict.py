@@ -1,5 +1,5 @@
 import torch
-from model_script import QATransformer, tokenize, pad_sequence
+from model import QATransformer, tokenize, pad_sequence
 
 def load_model_and_predict(question, model_path, max_length):
     # Define model parameters
