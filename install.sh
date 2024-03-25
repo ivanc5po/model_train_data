@@ -11,5 +11,4 @@ sudo swapon /swapfile
 sudo apt update
 sudo apt install ufw
 sudo ufw allow 12345/tcp
-mkdir models
 
