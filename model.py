@@ -12,8 +12,6 @@ import numpy as np
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-save_dir = 'models'
-
 with open("questions.txt", "r", encoding="utf-8") as f:
     questions = f.readlines()
 with open("answers.txt", "r", encoding="utf-8") as f:
@@ -82,12 +80,8 @@ def train_subset(questions_subset, answers_subset, tokenizer, max_length, epoch_
             optimizer.step()
             total_loss += loss.item()
             print(f'Epoch [{epoch+1}/100], Data Index [{data_index}], Data [{i+1}/{dataset_size}], Loss: {total_loss/(i+1):.5f}')
-            
-        try:
-            torch.save(model.state_dict(), os.path.join(save_dir, 'model.pth'))
-        except Exception as e:
-            logger.error("Failed to save model: %s", e)
-            logger.error(traceback.format_exc())
+
+        torch.save(model.state_dict(), 'model.pth')
 
 def split_data(data, n):
     chunk_size = len(data) // n
