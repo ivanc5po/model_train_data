@@ -37,10 +37,10 @@ def load_max_length():
 
 def load_model():
     vocab_size = len(tokenizer) + 1
-    hidden_size = 2048
+    hidden_size = 128
     num_layers = 32
     num_heads = 32
-    
+
     model = QATransformer(vocab_size, hidden_size, num_layers, num_heads)
     model.load_state_dict(torch.load("model.pth"))
     model.eval()
@@ -49,13 +49,14 @@ def load_model():
 def predict_answer(question, tokenizer, max_length, model):
     question_tokens = tokenize(question, tokenizer)
     padded_question = pad_sequence(question_tokens, max_length)
-    
+
     question_tensor = torch.tensor(padded_question).unsqueeze(0)
-    
+
     with torch.no_grad():
         output = model(question_tensor, question_tensor)  # Using the question as both source and target
-    
+
     predicted_token_ids = torch.argmax(output, dim=2).squeeze(0).tolist()
+    print(predicted_token_ids)
     predicted_answer = ' '.join([token for token in predicted_token_ids if token != 0])  # Remove padding tokens
     return predicted_answer
 
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     max_length = load_max_length()
     model = load_model()
 
-    # Example usage:
-    question = "What is the capital of France?"
-    predicted_answer = predict_answer(question, tokenizer, max_length, model)
-    print("Predicted Answer:", predicted_answer)
+    while True:
+        question = input("Q: ")
+        predicted_answer = predict_answer(question, tokenizer, max_length, model)
+        print("A:", predicted_answer)
