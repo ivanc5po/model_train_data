@@ -4,7 +4,7 @@ from model import QATransformer, tokenize, pad_sequence
 def load_model_and_predict(question, model_path, max_length):
     # Define model parameters
     vocab_size = 10000  # Assuming you know the vocab size beforehand
-    hidden_size = 2048
+    hidden_size = 128
     num_layers = 32
     num_heads = 32
 
